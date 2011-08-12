@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+  <!-- M5 App Template -->
+  
+    <head>
+        <meta charset="UTF-8" />
+        
+        <title>Cities of the World</title>
+        
+        <!--
+            "@require" annotation is supported by the M5 server to automatically expand to the correct
+            Javascript and CSS includes. You don't need to use these, you could use normal tags, but
+            it makes things easier. Use "m5 compile" to see the generated code for these.
+        
+        @require jquery
+        @require m5.boot, m5.env, m5.support
+        @require m5.remote_console
+        @require m5.simulator
+        @require m5.simplestorage
+        
+        @require jqtouch(theme:apple)
+            
+        -->
+
+        <!-- application.js is a good place to put non-display app logic. -->
+        <script src="application.js" type="text/javascript"></script>
+        
+        <script type="text/javascript" charset="utf-8">
+            var jQT = new $.jQTouch({
+                icon: 'assets/gclogo.png',
+                icon4: 'assets/gclogo4.png',
+                addGlossToIcon: true,
+                startupScreen: 'assets/gc_startup.png',
+                statusBar: 'black',
+                preloadImages: [M5.jqtouch_images()],
+                useFastTouch: true    
+            });
+            $.jQTouch.addExtension(function M5(jQT) {
+              // Didn't want to monkeypatch jqt.bars, so reconfigure not to autoload iscroll.
+              if (jQT.barsSettings) {
+                jQT.barsSettings.autoLoad_iScroll = false;
+              }
+            });
+            
+            M5.onTouchReady(function() {
+              $('button').live('click', function(e) {
+                e.preventDefault();
+                jQT.goTo($(this).attr('href'));
+              });
+            });
+            
+        </script>
+        
+        <style type="text/css" media="screen">
+          #cities img {
+            height:80px;
+          }
+        </style>
+    </head>
+    <body>
+        <div id="jqt">
+            <!-- HOME PAGE -->
+            <div id="home" class="pane edgetoedge">
+                <div class="toolbar">
+                    <h1>Cities of the World</h1>
+                    <a class="button ui-btn-right" href="#settings" data-transition="slideup">Settings</a>
+                </div>
+                <div id="stories" class="">
+                  <ul id="cities" data-role="listview" data-inset="true" style="overflow-y:scroll">
+                    <li><a href="#details">
+                      <img src="http://t0.gstatic.com/images?q=tbn:ANd9GcQdWPgFQycWBCgH9ENTu18Dig5NtU5CwkM1ZoJmf1PCtMzdLll8" />
+                      New York</a></li>
+                    <li><a href="#details">
+                      <img src="http://t1.gstatic.com/images?q=tbn:ANd9GcQuexouqhiDwS-5etDwbTN7xHcyAle3qVe2XbXZtI-q_d_vpRHn" />
+                      Paris</a></li>
+                    <li><a href="#details">
+                      <img src="http://t3.gstatic.com/images?q=tbn:ANd9GcQdsUi7rro27c8n5CX_OcscNIBkfEjKZD4w03cyy93ZsCHPKGdg8A" />
+                      London</a></li>
+                    <li><a href="#details">
+                      <img src="http://t1.gstatic.com/images?q=tbn:ANd9GcSjSDuDgfWvgmjO1aTQJdLgg9X1Gy4Vqx4xIkvJ1HG7IyMLai-fFQ" />
+                      Tokyo</a></li>
+                    <li><a href="#details">
+                      <img src="http://t0.gstatic.com/images?q=tbn:ANd9GcTzO_PjAed2UnH4BsTHBsxjkJXkRaaTRIw7dV6lU6Q5XmQ-Obud" />
+                      Rome</a></li>
+                      <li><a>Orinda</a></li>
+                  </ul>
+                </div>
+            </div>
+            
+            <div id="details" class="pane">
+              <div class="toolbar">
+                  <h1 id="city-title"></h1>
+                  <a class="button back" href="#" data-rel="back">Back</a>
+              </div>
+              <div data-role="content" id="city-details">
+              </div>
+            </div>
+              
+            
+        </div>
+
+        <!-- You can put app logic into application.js, separate JS files, or include it in your
+            main file. I prefer to put display-related logic inline next to the mark up.
+            -->
+        <script type="text/javascript">
+          // You can use M5.onTouchReady for code that needs to execute after jQTouch custom events are registered.
+          // This runs at document.ready, but after jQTouch is setup.
+          
+          /*
+          M5.onTouchReady(function() {
+            console.log("Adding handler for detail page");
+            $('#cities li').live('NOmousedown', function() {
+              var cityName = $(this).text().trim();
+              $.get('data/city_details.json', function(detail_set) {
+                var details = detail_set[cityName];
+                $('#city-details').html(details);
+              }, 'json');
+            });
+            
+            $('#app-name').html("APP: " + M5.settings.app_name);
+            $('#user-agent').html("UA: " + navigator.userAgent);
+          });
+          */
+        </script>
+        
+    </body>
+</html>
