@@ -1,0 +1,18 @@
+{
+  "am": [
+    "AM",
+    "PM"
+  ],
+  "dateWeek": "2021-06-12",
+  "firstName": "John",
+  "lastName": "TestTest",
+  "locations": [
+    "Bedford",
+    "City Road",
+    "New Cavendish Street",
+    "Northwick Park",
+    "Purley",
+    "Richard Desmond Childrens Eye Centre"
+  ],
+  "mobile": ""
+}

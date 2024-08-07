@@ -1,0 +1,16 @@
+{
+  "classes": "",
+  "gsOptions": {
+    "h": 6,
+    "w": 12,
+    "x": 1,
+    "y": 0
+  },
+  "layout": "b-card",
+  "offSet": 0,
+  "overflow": "",
+  "perPage": 2,
+  "tab": "-MZLcBK6p88xRumjbAWs",
+  "template": "<div class=\"row\">\n  <div class=\"column col-lg-12 col-sm-12 col-12\">\n\n    <button \n    \n    @click=\"makeAppointment().then((ret) => {console.log(JSON.stringify(ret))})\"\n    \n    \n     class=\" btn btn-success\"\n     \n     \n     >Create appointment</button>\n\n\n  </div>\n</div>\n<div class=\"row\">\n  <div class=\"column col-lg-12 col-sm-12 col-12\"></div>\n</div>\n<div class=\"row\" style=\"height: 227px;\">\n  <div class=\"column col-6\">\n    <div class=\"container\"></div>\n  </div>\n  <div class=\"column col-3\"></div>\n  <div class=\"column col-2\"></div>\n  <div class=\"row\" style=\"width:100%\">\n    <div class=\"col-3\"></div>\n    <div class=\"col-3\"></div>\n    <div class=\"col-6\">\n      \n      \n    <button type=\"button\" \n      @click='testEmail()'\n\n    class=\"btn btn-primary flex-row-reverse justify-content-center align-items-start align-self-center\">\n    test email</button>\n    </div>\n  </div>\n</div>",
+  "title": ""
+}

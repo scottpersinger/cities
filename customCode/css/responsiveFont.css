@@ -1,0 +1,62 @@
+.selected span {
+    font-size: 0.7em;
+    text-align: left;
+}
+
+.selected h4{
+    font-size: 0.7em;
+    padding: 0;
+    text-align: left;
+}
+
+.selected{
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    height: auto;
+}
+
+.x{
+    margin-top: 0;
+    padding-top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.labels{
+    font-size: 0.6em;
+    margin-bottom: 0;
+    margin-right: 2px;
+}
+
+.descriptionElement{
+    font-size: 0.6em;
+}
+
+.controlElement h5{
+    font-size: 0.7em;
+}
+
+.formsElement{
+    display: flex;
+    align-items: center;
+}
+
+.controlItem{
+    margin-top: 0;
+}
+
+.appt_container{
+    padding: 0 !important;
+}
+
+.custom-control-label span{
+    font-size: 0.8em;
+}
+
+.col-form-label{
+    font-size: 0.8;
+}

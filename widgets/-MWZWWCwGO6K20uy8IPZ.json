@@ -1,0 +1,21 @@
+{
+  "classes": "",
+  "columnCount": "1",
+  "dataSource": "appointmentData",
+  "detailTemplate": "<template>\n  <div>\n  </div>\n</template>",
+  "gsOptions": {
+    "h": 14,
+    "w": 24,
+    "x": 0,
+    "y": 2
+  },
+  "offSet": 0,
+  "overflow": "",
+  "perPage": 2,
+  "styles": "",
+  "tab": "-MWZOs__wa5mE_GBzdMd",
+  "template": "<div class=\"row\" style=\"height: 58px;\">\n  <div class=\"column col-2\">\n    <button class=\"btn btn-success btn-block\">-</button></div>\n  <div class=\"column col-6\">\n    <h5>{{row.name}} <br>{{row.date| moment(\" MMMM Do YYYY\")}}\n      <br>{{row.time}}</h5>\n  </div>\n  <div class=\"column col-2\">\n    <h5>{{row.type}}</h5>\n  </div>\n  <div class=\"column col-2\">\n    <h5>{{row.conversions}}</h5>\n  </div>\n\n</div>",
+  "title": "",
+  "type": "card-list",
+  "widthType": "columnCount"
+}

@@ -1,0 +1,7 @@
+.rounded-circle{
+    width: 95px;
+}
+
+.custom-toggle input:checked + .custom-toggle-slider:before{
+    transform: translateX(70px);
+}

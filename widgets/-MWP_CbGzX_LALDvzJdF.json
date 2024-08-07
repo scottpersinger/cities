@@ -1,0 +1,19 @@
+{
+  "classes": "",
+  "dependency": "dataGrid/patientData",
+  "gsOptions": {
+    "h": 18,
+    "w": 24,
+    "x": 0,
+    "y": 34
+  },
+  "layout": "b-card",
+  "overflow": "height: auto",
+  "props": {
+    "gridId": "patientData"
+  },
+  "styles": "",
+  "tab": "-MZC7Xbfv7QBVgJ05Rd6",
+  "title": "Patients",
+  "type": "DataGrid"
+}

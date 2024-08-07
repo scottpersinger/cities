@@ -1,0 +1,127 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1676146254543",
+        "x": 213,
+        "y": -60,
+        "width": 103.7734375,
+        "height": 40,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1676146258110",
+        "x": 753,
+        "y": -60,
+        "width": 200.00006103515625,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "getCompucareAppointment",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "// Get compucare token\nlet url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\" \n\nconst timeout = i => new Promise(resolve => setTimeout(() => resolve(i), i));\nlet auth = null;\nlet text = null;\nlet token = null;\n\nasync function fetchBooking() {\n    let auth = await getOAuthToken();\n    \n    if(!auth) {\n        setError('Unable to log into compucare.');\n        return;\n    }\n\n    try {\n        let bookingID = context.payload.bookingID;\n        await fetchBookingThroughAPI(auth, bookingID);\n    } catch (err) {\n        setError('Error while fetching booking.');\n        context.data.err = err\n        return;\n    }\n}\n\nfunction setError(message) {\n    $log(message);\n    context.data.error = {\n        success: false,\n        message: message,\n    }\n}\n\nasync function getOAuthToken() {\n    let agent = new https.Agent({\n        maxSockets: 2,\n        rejectUnauthorized: false,\n    });\n    try {\n        let bodyJson = {\n            \"grant_type\": \"password\",\n            \"username\": \"CCU|S1S1S1\",\n            \"password\": \"Password\",\n            \"scope\": \"full\"\n        };\n        let clientId = \"ccoutpatients\";\n        let secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\n        \n        let d = await fetch(url, {\n            method: \"POST\",\n            headers: {\n                'Content-Type': 'application/json',\n                \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\n            },\n            agent:agent,\n            body: JSON.stringify(bodyJson)\n        })\n\n        let auth = await d.json();\n        return auth;\n    }\n    catch(err){\n        return false;\n    }\n}\n\nasync function fetchBookingThroughAPI(auth, bookingID) {\n    let url = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/Bookings/${bookingID}`;\n\n    let a = await fetch(url, {\n        method: \"GET\",\n        headers: {\n            'Content-Type': 'application/json',\n            \"Authorization\": auth.token_type + \" \" + auth.access_token,\n        }                  \n    });\n    let booking = await a.json();\n    context.data.booking = booking;\n};\nawait fetchBooking();"
+        }
+      },
+      {
+        "id": "node1676803483790",
+        "x": 1154,
+        "y": -60,
+        "width": 188.90625,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "getSalesforceConversion",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try {\n    let conversion = await context.conn.sobject(\"Conversion__c\").retrieve(context.payload.conversionID);\n    context.data.conversion = conversion;\n} catch (err) {\n    $log('Error updating conversion in single appt booking');\n    $log(err.message);\n    console.error(err);\n}"
+        }
+      },
+      {
+        "id": "node1676803943681",
+        "x": 453,
+        "y": -60,
+        "width": 134.453125,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "salesforceLogin",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try {\n    context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n    const username = \"sebastian@tangle.io.partialdev\";\n    const securityToken = \"zXo1sdkg4BiWZnsCQf40n0TL\";\n    const password = \"Moorfield$test123456\" + securityToken;\n\n    let login =  await context.conn.login(username, password)\n\n    context.login = login \n\n} catch(err) {\n    $log('invalid sf login get appts')\n    $log(err)\n}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1676146258110-right",
+        "target": "node1676803483790",
+        "endSocket": "left",
+        "id": "line-1676803510820",
+        "instance": {},
+        "label": "compucareAppointment",
+        "targetLabel": "salesforceConversion",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676803943681-right",
+        "target": "node1676146258110",
+        "endSocket": "left",
+        "id": "line-1676804006587",
+        "instance": {},
+        "label": "Script Task",
+        "targetLabel": "compucareAppointment",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676146254543-right",
+        "target": "node1676803943681",
+        "endSocket": "left",
+        "id": "line-1676804015486",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "fetchBookingById"
+}

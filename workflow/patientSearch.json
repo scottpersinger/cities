@@ -1,0 +1,61 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1619422541031",
+        "x": 146,
+        "y": 213,
+        "height": 40,
+        "width": 103.7734375,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1619422762634",
+        "x": 486,
+        "y": 173,
+        "height": 40,
+        "width": 147.0390625,
+        "clazz": "scriptTask",
+        "label": "get data from pas",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "\n// try {\n//     context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n//     const username = \"sebastian@tangle.io.partialdev\";\n//     const securityToken = \"zXo1sdkg4BiWZnsCQf40n0TL\";\n//     const password = \"Moorfield$test123456\" + securityToken;\n\n//     let login =  await context.conn.login(username, password)\n\n//     context.login = login \n\n// } catch(err) {\n//     $log('invalid sf login get appts')\n//     $log(err)\n// }\n\n\n\n\n\nconst fs = require('fs')\n\nconst apiEndpoint = `https://194.74.145.110:463/patient/search`;\nconst username = 'AuthorisedCRMClient';\nconst password = '3m3R@LD';\n\nfunction getUserAgent() {\n  let token = Buffer.from(`${username}:${password}`, 'utf8').toString('base64')\n  return new https.Agent({\n      ca: fs.readFileSync(\"./routes/CRMProd_2024.cer\"),        \n      cert: fs.readFileSync(\"./routes/ca2024.crt\"),\n      key: fs.readFileSync(\"./routes/ca2024.key\"), \n      rejectUnauthorized: false,\n      headers: {\n      'Authorization': `Basic ${token}`\n    },\n  });\n}\n\nfunction getContextParam(name) {\n    if(name == 'gender') {\n      let gender = context.payload[name] && context.payload[name].length > 0 ? context.payload[name] : undefined;\n\n      if(gender === 'Male') {\n        return 'M'\n      } else if(gender === 'Female') {\n        return 'F'\n      } else {\n        return 'U'\n      }\n    }\n\n\n    return context.payload[name] && context.payload[name].length > 0 ? context.payload[name] : undefined;\n}\n\nasync function doQuery(params, agent, timeout) {\n  timeout = timeout || 60 * 1000 * 3;\n  return await axios.get(apiEndpoint, {\n    params: params,\n    httpsAgent: agent,\n    timeout: timeout,\n  })\n}\n\nasync function getAllResults(params, agent, maxResults, timeout) {\n  maxResults = maxResults || 1000;\n  let results = [];\n\n  while(true) {\n    let response = await doQuery(params, agent, timeout);\n    results = results.concat(response.data.resultset.results);\n    context.data.testresults = results;\n    if(response.data.resultset.results.length == 0) {\n      break;\n    }\n    if(results.length >= maxResults) {\n      break;\n    }\n    if(results.length >= response.data.resultset.count) {\n      break;\n    }\n    params['page_no'] = response.data.resultset.page;\n  }\n\n  return results;\n}\n\nfunction getUniqueResults(results) {\n  let hashtable = {};\n  results.forEach(patient => hashtable[patient.Patient_ID__c] = patient);\n  return Object.values(hashtable);\n}\n\nfunction levenshteinDistance(s, t) {\n  if (!s.length) return t.length;\n  if (!t.length) return s.length;\n  const arr = [];\n  for (let i = 0; i <= t.length; i++) {\n    arr[i] = [i];\n    for (let j = 1; j <= s.length; j++) {\n      arr[i][j] =\n        i === 0\n          ? j\n          : Math.min(\n              arr[i - 1][j] + 1,\n              arr[i][j - 1] + 1,\n              arr[i - 1][j - 1] + (s[j - 1] === t[i - 1] ? 0 : 1)\n            );\n    }\n  }\n  return arr[t.length][s.length];\n};\n\nfunction orderByLevenshteinDistanceForNames(results, firstName, lastName) {\n  if(!firstName && !lastName) return results;\n  firstName = (firstName || '').toLocaleLowerCase()\n  lastName = (lastName || '').toLocaleLowerCase()\n  let start = (firstName ? firstName + ' ' : '') + lastName;\n  results.forEach(patient => {\n    let goal = ((firstName ? (patient.First_Name__c || '').toLocaleLowerCase() : '') + ' ' + (lastName ? (patient.Last_Name__c || '').toLocaleLowerCase() : '')).trim();\n    patient.levenshtein_dist = levenshteinDistance(start, goal);\n  });\n\n  results.sort(\n    (a, b) => {\n      return a.levenshtein_dist - b.levenshtein_dist || ((a.Last_Name__c || '').localeCompare(b.Last_Name__c || ''))\n    }\n  );\n\n  return results;\n}\n\nconst acceptedParams = {\n  'date_of_birth': getContextParam('dob'),\n  // 'first_name': getContextParam('firstName'),\n  // 'last_name': getContextParam('lastName'),\n  'nhs_num': getContextParam('nhs_num'),\n  'gender': getContextParam('gender')\n};\n\n// const searchGreedily = !!context.payload['search_greedily'];\nconst searchGreedily = false; // Always segetAllResultsarch greedily for now.\n\ntry {\n  const agent = getUserAgent();\n\n  let results = [];\n  let responses = [];\n\n  let params = {};\n  for(param in acceptedParams) {\n    if(acceptedParams !== undefined) {\n      params[param] = acceptedParams[param];\n    }\n  }\n  let firstName = getContextParam('firstName');\n  let lastName = getContextParam('lastName');\n  results = await getAllResults(acceptedParams, agent);\n  // let response = await doQuery(acceptedParams, agent);\n  // results = response.data.resultset.results;\n\n  // context.data is the object passed back to the computed property (front end)\n  results = getUniqueResults(results);\n  if(firstName || lastName) {\n    results = orderByLevenshteinDistanceForNames(results, firstName, lastName);\n  }\n  context.data.patients = results\n\n} catch(err)  {\n    $log(err.message)\n\n    // const msg = {\n    //   to: 'sebastian@tangle.io',\n    //   from: 'moorfields@test.com',\n    //   subject: 'connection issue',\n    //   text: `connection issue to pas\n    //   error message is ${err.message}\n      \n    //   `,\n    //   html: `connection issue to pas\n    //   error message is ${err.message}\n      \n    //   `\n    // }\n\n    // let nEmail = await sendEmail(msg)\n\n    context.data.status = {\n      error:err.message,\n      error_res: err.response ? err.response.data : undefined,\n      status:'error',\n    }\n\n}\n"
+        },
+        "display": false,
+        "dispaly": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1619422541031-right",
+        "target": "node1619422762634",
+        "id": "line-1619422772302",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "get data from pas",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "grid"
+        }
+      }
+    ]
+  },
+  "name": "patientSearch"
+}

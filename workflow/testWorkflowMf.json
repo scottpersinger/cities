@@ -1,0 +1,92 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1687955099137",
+        "x": "327",
+        "y": "282",
+        "width": 103.375,
+        "height": 40,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1687955101368",
+        "x": "569",
+        "y": "340",
+        "width": 100,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "test run",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "console.log('test run')\r\n\r\ncontext.status = 200\r\ncontext.data = 'returned succesfully'"
+        }
+      },
+      {
+        "id": "node1687955107111",
+        "x": "834",
+        "y": "356",
+        "width": 100,
+        "height": 40,
+        "clazz": "endEvent",
+        "label": "End Event",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1687955099137-right",
+        "target": "node1687955101368",
+        "endSocket": "left",
+        "id": "line-1687955103861",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1687955101368-right",
+        "target": "node1687955107111",
+        "endSocket": "left",
+        "id": "line-1687955111299",
+        "instance": {},
+        "label": "Script Task",
+        "targetLabel": "End Event",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "testWorkflowMf"
+}

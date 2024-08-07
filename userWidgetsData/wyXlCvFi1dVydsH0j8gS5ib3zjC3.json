@@ -1,0 +1,49 @@
+{
+  "am": [
+    "AM",
+    "PM",
+    "NULL"
+  ],
+  "bookingDateTime": "",
+  "bookingFinished": false,
+  "bookingID": "",
+  "bookingPatientId": "",
+  "conversionId": "a0A4L00000642kXUAQ",
+  "createEmail": "",
+  "createMobile": "",
+  "creationError": "",
+  "dateWeek": "2021-09-08",
+  "datesToShow": [
+    "2021-09-08",
+    "2021-09-09",
+    "2021-09-10",
+    "2021-09-13",
+    "2021-09-14"
+  ],
+  "editError": "",
+  "failedBooking": false,
+  "loadingBooking": false,
+  "locations": [
+    "Bedford",
+    "Moorfields Private Outpatient Centre",
+    "New Cavendish Street",
+    "Northwick Park",
+    "Purley",
+    "Richard Desmond Children's Eye Centre"
+  ],
+  "noPatientsFound": false,
+  "params": {
+    "tab": "-MWZUnL0Mw7L_6bo6jKO"
+  },
+  "paramsConsultant": "",
+  "patientCreated": false,
+  "patientEdit": false,
+  "patientEdited": false,
+  "refreshAppointments": false,
+  "showCreatePatient": false,
+  "successfulBooking": false,
+  "validationAlert": "",
+  "validationMessage": "missingData",
+  "visualBookingDateTime": "",
+  "visualBookingID": ""
+}

@@ -1,0 +1,140 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": "patientData.status.status"
+    },
+    "nodes": [
+      {
+        "id": "node1616656483078",
+        "x": 110,
+        "y": 191,
+        "height": 40,
+        "width": 103.77343314034599,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1616656486225",
+        "x": 314,
+        "y": 188,
+        "height": 40,
+        "width": 100,
+        "clazz": "scriptTask",
+        "label": "login",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "\n\ncontext.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n    const username = \"sebastian@tangle.io.partialdev\";\n    const securityToken = \"CzFZMU9zZyhcPjetlk6lE4SL\";\n    const password = \"Moorfield$test12345\" + securityToken;\n\nlet login =  await context.conn.login(username, password)\n\ncontext.login = login \n\n"
+        },
+        "display": false
+      },
+      {
+        "id": "node1616657082701",
+        "x": 493,
+        "y": 191,
+        "height": 40,
+        "width": 127.94533865792411,
+        "clazz": "scriptTask",
+        "label": "Create patient",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "context.patient = await context.conn\n        .sobject(\"Patient__c\")\n        .create({\n        First_Name__c: context.data.firstName,\n        Last_Name__c: context.data.surName,\n        Mobile_Phone__c: context.data.mobile,\n                Email__c: context.data.email\n        });\n"
+        },
+        "display": false
+      },
+      {
+        "id": "node1616658602982",
+        "x": 747,
+        "y": 193,
+        "height": 40,
+        "width": 176.03123256138394,
+        "clazz": "scriptTask",
+        "label": "update the conversion",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "\n\n\nlet updateConversion = await context.conn.sobject(\"Conversion__c\").update(\n      {\n        Id: 'a0A4L000003lCyqUAE',\n        Patient__c: context.patient.id\n      }\n    );\n\n \n\n\n    "
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1723049048459",
+        "x": "-63",
+        "y": "350",
+        "width": 125.77344621930804,
+        "height": 40,
+        "clazz": "updateRecord",
+        "label": "Update Record",
+        "className": "update-record",
+        "icon": {
+          "name": "pen",
+          "color": "hsl(189, 87%, 50%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1616656483078-right",
+        "target": "node1616656486225",
+        "id": "line-1616664192942",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "login",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "node1616656486225-right",
+        "target": "node1616657082701",
+        "id": "line-1616664195394",
+        "instance": {},
+        "label": "login",
+        "targetLabel": "Create patient",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "node1616657082701-right",
+        "target": "node1616658602982",
+        "id": "line-1616664197362",
+        "instance": {},
+        "label": "Create patient",
+        "targetLabel": "update the conversion",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      }
+    ]
+  },
+  "name": "Select Patient"
+}

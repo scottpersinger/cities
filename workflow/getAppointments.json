@@ -1,0 +1,191 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1619284384724",
+        "x": 93,
+        "y": 80,
+        "height": 39.689914949847655,
+        "width": 100.17839164629379,
+        "clazz": "startEvent",
+        "label": "User clicks",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1619284387432",
+        "x": 719,
+        "y": 138,
+        "height": 39.6899449817902,
+        "width": 146.8062258993171,
+        "clazz": "scriptTask",
+        "label": "get appointments",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "\n// If no clinics found then no solutions\nif (context.data.clinicCount == 0){\n\n    context.data.status = {error:'There are no solutions available', status:'No solutions'}\n    context.data.isithere = 'yes'\n    $log('there are no solutions returned')\n}\n\n\nlet token\n\nvar agent = new https.Agent({maxSockets: 2,\n  //ca: fs.readFileSync(\"./routes/RhapsodyDevCert.cer\"),        \n // cert: fs.readFileSync(\"./routes/ca.crt\"),\n  //key: fs.readFileSync(\"./routes/ca.key\"), \n  rejectUnauthorized: false});\n\n// Get compucare token\nlet url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\" \n\n// url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServerLive/compucare/oauth/token\"\n\nconst timeout = i => new Promise(resolve => setTimeout(() => resolve(i), i));\nlet auth = null \nlet text = null \n\n\nconsole.log('Running get appts api')\n\n  try {\n\n        let bodyJson = {\n            \"grant_type\": \"password\",\n            \"username\": \"CCU|S1S1S1\",\n            \"password\": \"Password\",\n            \"scope\": \"full\"\n        },\n        clientId = \"ccoutpatients\",\n        secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\n        \n        let d = await fetch(url, {\n            method: \"POST\",\n            headers: { 'Content-Type': 'application/json',\n            \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\n            },\n            // agent:agent,\n            body: JSON.stringify(bodyJson)\n        })\n\n\n        console.log('token is, ', d)\n\n        // Check if the response status is OK (200-299)\n        if (!d.ok) {\n            throw new Error('Network response was not ok ' + d.statusText);\n        }\n\n        let json = await d.json()\n\n\n        auth = json\n        context.data.auth = auth\n\n        \n\n\n       \n    }\n   catch(err){\n    //    context.data.errorData = err.response.data\n    //     context.data.errorHeaders =  err.response.headers\n        console.log(err)\n        console.log(err.message)\n        console.error('something went wrong getting access token')\n       $log('error getting token from compucare')\n       context.data.status = {error:'token timeout', status:'timeout'}\n  }\n\n     \n    context.data.auth = auth // (debug)\n    context.data.appointments = []\n    context.data.results = {}\n    context.data.days = {}\n    context.data.clinicCount = context.data.clinics.length\n\n    try {\n        const getAppointments = async (clinicId, fromDate, toDate, clinic) => {\n            let url = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/BookingSearch?fromDate=${fromDate}&toDate=${toDate}&clinicId=${clinicId}&consultantId=`    \n\n            let a = await fetch(url, {method: \"GET\",\n                headers: { 'Content-Type': 'application/json',\n                \"Authorization\": auth.token_type + \" \" + auth.access_token\n                }                   \n            })\n\n            let r = await a.json()\n\n            let appts = r\n\n            for (i = 0; i < appts.length; i++) {\n\n                appts[i].clinic = clinic\n\n                appts[i].conversions = clinic.conversions\n            } \n            if(appts.length > 0){\n                context.data.appointments.push(...appts)\n            }   \n\n        };\n\n\n\n        // Filter appts by dates and consultant\n        let specificDate = new Date(context.payload.specificDate)\n        let dateVal = new Date(context.payload.dateWeek), id = 50\n        let consultants = [50,12,105, 61, 72]\n        let queries = []\n        let c = 0\n        \n        // Specific date \n        let newSpecificDate = new Date(specificDate.setDate(specificDate.getDate() + 0))\n        specificDate = newSpecificDate.getFullYear() + '-' + (newSpecificDate.getMonth() + 1) + '-' + newSpecificDate.getDate()\n\n        let newDate = new Date (dateVal.setDate(dateVal.getDate() + 0));\n        let date = newDate.getFullYear() + '-' + (newDate.getMonth() + 1) + '-' + newDate.getDate()   \n        let fromDate = date\n\n        newDate = new Date(dateVal.setDate(dateVal.getDate() + 6));\n        date = newDate.getFullYear() + '-' + (newDate.getMonth() + 1) + '-' + newDate.getDate()  \n        let toDate = date\n        \n        for (ii = 0; ii < context.data.clinics.length; ii++) {\n            let nc = context.data.clinics[ii].Clinic_ID__c\n\n\n\n            // Filter depending if date range or specific date\n            if(context.payload.specificDate){\n                queries.push(getAppointments(nc, specificDate, specificDate, context.data.clinics[ii]))\n            }else {\n                queries.push(getAppointments(nc, fromDate, toDate, context.data.clinics[ii]))\n            }\n            \n            await timeout(1200)\n            $log('waited one second')\n        }\n\n\n\n\n            context.data.queries = queries.length\n\n\n            let final = await Promise.all(queries) \n\n            context.clinicCount = context.data.clinics.length\n\n            // Filter appointments with booking status of 0 and return to front end through context.data object\n            context.data.appointmentsSorted = await alasql('select  distinct * from ? where BookingStatus = 0 order by conversions , Start ',[context.data.appointments])\n\n        }   catch(err)  {\n      \n            $log('error connecting to compucare')\n            $log(err)\n        \n            const msg = {\n                to: 'sebastian@tangle.io',\n                from: 'moorfields@test.com',\n                subject: 'connection issue',\n                text: `connection issue to pas\n                error message is ${err.message}\n                \n                `,\n                html: `connection issue to compucare\n                error message is ${err}\n                \n                `\n            }\n\n            let nEmail = await sendEmail(msg)\n\n\n            $log(err.message)\n\n            context.data.status = {error:err.message, status:'timeout'}\n\n  }"
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1620472981917",
+        "x": 258,
+        "y": 71,
+        "height": 39.689914949847655,
+        "width": 149.0388005082137,
+        "clazz": "scriptTask",
+        "label": "login to salesforce",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "// Log into SF using JSforce\n\ntry {\n    context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n    const username = \"sebastian@tangle.io.partialdev\";\n    const securityToken = \"zXo1sdkg4BiWZnsCQf40n0TL\";\n    const password = \"Moorfield$test123456\" + securityToken;\n\n    let login =  await context.conn.login(username, password)\n\n    context.login = login \n\n} catch(err) {\n    $log('invalid sf login get appts')\n    $log(err)\n}\n\n\n "
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1620474381165",
+        "x": 560,
+        "y": 145,
+        "height": 39.6899449817902,
+        "width": 114.05435038041527,
+        "clazz": "scriptTask",
+        "label": "get clinic ids",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "let con = 'Glaucoma'\nlet speciality = 'Cataracts'\nlet insurer = ''\nlet ageRange = 30\nlet consultant = null \nlet sharedCare = 'false'\n\n\n// Get inputs about the appointment needed from params\n// Sent from the visualforce page (passed from the front end - getAppointmentsFunction - custom js function)\nif (context.payload.params){\n  con = context.payload.params.condition || 'Cataract'\n  insurer = context.payload.params.insurer || 'SELF'\n  ageRange = context.payload.params.ageRange || '30'\n  consultant = context.payload.params.consultant\n  sharedCare = context.payload.params.sharedCare || 'FALSE'\n}\n\nif (context.payload.params){\n\n  speciality = context.payload.params.speciality || 'Glaucoma'\n\n\n}\n\n// Pass back insurer to see it in the frontend (debug)\ncontext.data.insurer = insurer\n\n// Create a search query for searching for solutions\nlet apptSearch = ''\napptSearch =  \"Shared_Care__c = \" + sharedCare + \" AND Condition__c ='\" + con \n+ \"'   AND Specialty__c ='\" + speciality \n+ \"' AND Insurer_s_Accepted__c includes ('\"+insurer+\"') \"\napptSearch = apptSearch + \" AND Age_Range_Max__c >= \" + ageRange\napptSearch = apptSearch + \" AND Age_Range_Min__c <= \" + ageRange\n\n// if there is a consultant set then pass it to search\nif (consultant){\n  apptSearch = apptSearch + \" AND Consultant__c = '\" + consultant + \"'\"\n // apptSearch = apptSearch + \" AND NPE_Book_Designated__c = 'Yes' \"  \n\n} else \n{\n \n  apptSearch = apptSearch + \" AND Undesignated__c = 'Yes' \"\n}\n\n\n// Send back apptSearch query to look at in the front end (debug)\ncontext.data.apptSearch = apptSearch\n\n\n// Get all solutions matching the apptSearch search query\nlet solutions = await context.conn\n    .sobject(\"Solution__c\")\n\n    .select('*') // asterisk means all fields in specified level are targeted.\n  .where(apptSearch)\n    .execute((err, record) => {\n      if (err) {\n        return err;\n      } else {\n        if (record.length !== 0) {\n          return record;\n        } else return false;\n      }\n    });\n\n\n// Get all the available locations\n\n    let locations = await context.conn\n    .sobject(\"Location__c\")\n    //.find({ 'Specialty__c': 'Cataracts'})\n\n    .select('*') // asterisk means all fields in specified level are targeted.\n    .execute((err, record) => {\n      if (err) {\n        return err;\n      } else {\n        if (record.length !== 0) {\n          return record;\n        } else return false;\n      }\n    });\n\n// Get all the available consultants with the record type consultant\nlet consultants = await context.conn\n    .sobject(\"Contact\")\n    .find({ '\tRecordTypeId': '0124L000000Ait2QAC'})\n\n    .select('*') // asterisk means all fields in specified level are targeted.\n    .execute((err, record) => {\n      if (err) {\n        return err;\n      } else {\n        if (record.length !== 0) {\n          return record;\n        } else return false;\n      }\n    });\n\n\n// filter to just solutions with clinics then return as array\n\n// Pass data back to front end\ncontext.data.solutions = solutions\ncontext.data.locations = locations \ncontext.data.consultants = consultants \ncontext.data.params = context.payload.params\ncontext.data.con = con\ncontext.data.speciality = speciality\n\nif (!solutions)\n{\n  $log('there are no solutions')\n  context.data.clinics = []\n  context.data.clinicCount = 0\n\n  // there are no solutions so return empty appts\n  context.data.appointmentsSorted =[]\n  \n\n}\n\n  let clinics = []\n\n  // if there is not a consultant \nif (!context.payload.params.consultant){\n    $log('no consultant set')\n\n    clinics = solutions\n\n\n}\nelse {\n\n  if (!solutions){\n    // there are no matching solutions at all \n\n    $log('No solutions found ')\n\n    context.data.clinicCountNonDesignated=0\n    context.data.appointmentsSorted =[]\n    context.data.clinics =[]\n    context.data.clinicCountDesignated=0\n    \n  }\n  else {\n\n    context.data.clinicCountNonDesignated = solutions.length\n\n    //$log('consultant selected')\n\n    clinics = solutions.filter(function (item) {\n      return item.NPE_Book_Designated__c == 'Yes';\n    });\n\n    context.data.clinicCountDesignated = clinics.length\n\n\n    if(context.payload.override) {\n      clinics = solutions\n      context.data.clinicCountNonDesignated = solutions.length + clinics.length\n      context.data.clinicCountDesignated = clinics.length + solutions.length\n    }\n\n    context.data.appointmentsSorted = []\n\n    // If glaucoma present search for visual solutions also\n    if (speciality.indexOf('Glaucoma')> -1 )  {\n      \n      \n      let visualSearch = \" Clinic_ID__c = '131' OR Clinic_ID__c = '150' OR Clinic_ID__c = '295' OR Clinic_ID__c = '299'  OR Clinic_ID__c = '308'       \"\n      \n      // Find all the visual solutions matching the visualSearch search query\n      let vsolutions = await context.conn\n          .sobject(\"Solution__c\")\n          \n\n          .select('*') // asterisk means all fields in specified level are targeted.\n        .where(visualSearch)\n          .execute((err, record) => {\n            if (err) {\n              return err;\n            } else {\n              if (record.length !== 0) {\n                return record;\n              } else return false;\n            }\n          });\n\n      clinics.push.apply(clinics, vsolutions)\n    }\n  }\n}\n\n// Send clinics data back to frontend\ncontext.data.clinics2 = clinics\n\n// Match clinics to consultants\nlet res = await alasql(`select distinct top(40) s.Clinic_ID__c, s.Conversions__c as conversions,\n c.Name as consultantName,s.Id as solutionID, s.Name as solutionName,  s.Location__c as locationName \n  from ? as s, ? as c where \n     s.Consultant__c = c.Id order by s.Conversions__c `, \n   [clinics,consultants])\n\n\n\ncontext.data.clinics = res\n\n\n\n\n\n\n\n"
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1620741469799",
+        "x": 931,
+        "y": 47,
+        "height": 39.689914949847655,
+        "width": 122.03083432072924,
+        "clazz": "endEvent",
+        "label": "Return results",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1622015385371",
+        "x": 40,
+        "y": 897,
+        "height": 39.68997501373275,
+        "width": 190.37981159537532,
+        "clazz": "scriptTask",
+        "label": "get appointments looped",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "/*\nlet token\n\n//var agent = new https.Agent({maxSockets: 50});\nvar agent = new https.Agent();\nconst limit = pLimit(2);\n\n//$log('about to connect to compucare')\nlet url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\" \n\n//url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServerLive/compucare/oauth/token\"\nconst timeout = i => new Promise(resolve => setTimeout(() => resolve(i), i));\n     let bodyJson = {\n                \"grant_type\": \"password\",\n                \"username\": \"CCU|S1S1S1\",\n                \"password\": \"Password\",\n                \"scope\": \"full\"\n            },\n            clientId = \"ccoutpatients\",\n            secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\n\n            let headers = new Headers();\n            headers.append(\"Content-Type\", \"application/json\");\n            headers.append(\"Authorization\", \"Basic \" + btoa(clientId + \":\" + secret));            \n\n           let d = await fetch(url, \n           {method: \"post\",\n                    headers: { 'Content-Type': 'application/json',\n                     \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\n                     },\n                     agent:agent,\n                    body: JSON.stringify(bodyJson)\n                })\n\n            let json = await d.json()\n            let auth = json\n           // $log('auth compucare is ')\n            $log(auth)\n     \n            context.data.auth = auth\n        context.data.appointments = []\n        context.data.results = {}\n        context.data.days = {}\n        context.data.clinicCount = context.data.clinics.length\n\n        const getAppointments = async (clinicId, fromDate, clinic) => {\n      \n            let url = \"https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/AvailableSlots/\" + clinicId + \"/\" + fromDate  \n     //       $log(url)\n            //url = \"https://compucareapps.moorfields.nhs.uk/Compucare7APILive/api/op/AvailableSlots/\" + clinicId + \"/\" + searchDate\n\n            console.log('about to query appointments')\n\n            let a = await fetch(url, {method: \"GET\",\n                        headers: { 'Content-Type': 'application/json',\n                        \"Authorization\": auth.token_type + \" \" + auth.access_token\n                        }                   \n                    })\n\n            let r = await a.json()\n         //   $log('session response is')\n       //    $log(JSON.stringify(r))\n       //     context.data.results['data'+clinicId+'-'+searchDate] = r.Sessions \n            if (r.Sessions){\n                if (r.Sessions[0]){\n                    let appts = r.Sessions[0].Slots\n                    context.data.days[fromDate] = (context.data.days[fromDate] || 0) + appts.length\n\n                    for (i = 0; i < appts.length; i++) {\n                        let c = appts[i]\n                        let s = r.Sessions[0]\n                        delete s.Slots\n                    appts[i].session = s\n                    appts[i].clinic = clinic\n                    appts[i].date = fromDate\n                    appts[i].conversions = clinic.conversions\n                    } \n                    context.data.appointments.push(...appts)\n\n                    \n\n                    context.data.results[clinicId+'-'+fromDate] = r.Sessions\n                    return appts\n                }\n                else {\n                    return []\n                }\n\n            } else {\n        //       $log('no appointments for consultant' + clinicId + ' on date ' + searchDate)\n        //       context.data.results[clinicId+'-'+searchDate] = 0\n                return []\n            }\n\n\n        };\n        let dateVal = new Date(context.payload.dateWeek), id = 50\n        let consultants = [50,12,105, 61, 72]\n        let queries = []\n        let c = 0\n\n        let newDate = new Date (dateVal.setDate(dateVal.getDate() + 0));\n        let date = newDate.getFullYear() + '-' + (newDate.getMonth() + 1) + '-' + newDate.getDate()   \n        let fromDate = date\n       // date = '2021-24-05'\n\n        for (n = 0; n < 6; n++) {\n            newDate = new Date(dateVal.setDate(dateVal.getDate() + n));\n            date = newDate.getFullYear() + '-' + (newDate.getMonth() + 1) + '-' + newDate.getDate()  \n            let fromDate = date\n\n     //       $log('clinic is '+c + 'from date' + fromDate  + ' # of clinics is ' + context.data.clinics.length)\n            \n            for (i = 0; i < context.data.clinics.length; i++) {\n                c = context.data.clinics[i].Clinic_ID__c\n                let ci = context.data.clinics[i].Clinic_ID__c\n                let cl = context.data.clinics[i]\n                queries.push(\n                    \n                    limit(\n                        () => getAppointments(ci, fromDate,  cl)\n                        )\n                    )\n                await timeout(100)\n             //   $log('waited one second')\n            }\n        }\n\n\n //       try {\n\n            context.data.queries = queries.length\n\n\n\n \n            let final = await Promise.all(queries) \n            $log('appointments returned ' + context.data.appointments.length)\n            context.data.appointmentsSorted = await alasql('select  distinct * from ? order by conversions , date ',[context.data.appointments])\n            \n\n\n// test getting appts new way \n\n            let nurl = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/BookingSearch?fromDate=2021-6-1&toDate=2021-6-1&clinicId=158&consultantId=`    \n            $log(url)\n            //url = \"https://compucareapps.moorfields.nhs.uk/Compucare7APILive/api/op/AvailableSlots/\" + clinicId + \"/\" + searchDate\n\n            console.log('about to query appointments')\n\n            let na = await fetch(nurl, {method: \"GET\",\n                        headers: { 'Content-Type': 'application/json',\n                        \"Authorization\": auth.token_type + \" \" + auth.access_token\n                        }                   \n                    })\n\n            let nr = await na.json()\n            $log(nr)\n\n            context.data.newResults = nr\n\n\n\n\n\n\n\n\n   //     }\n  //      catch(err)\n  //      {\n  //          console.log('error processing data')\n  //          $log('error processing appointments')\n  //          $log(err)\n//\n  //      }\n\n        \n*/\n"
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1718118175419",
+        "x": "-32",
+        "y": "-240",
+        "width": 105.78295276429603,
+        "height": 39.689914949847655,
+        "clazz": "scriptTask",
+        "label": "Script Task",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1619284384724-right",
+        "target": "node1620472981917",
+        "id": "line-1620741429735",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "login to salesforce",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "node1620472981917-right",
+        "target": "node1620474381165",
+        "id": "line-1621233010646",
+        "instance": {},
+        "label": "login to salesforce",
+        "targetLabel": "get clinic ids",
+        "type": {
+          "startPlug": "behind",
+          "color": "#e34a60",
+          "size": 3,
+          "path": "grid",
+          "endPlug": "arrow1"
+        }
+      },
+      {
+        "source": "node1620474381165-right",
+        "target": "node1619284387432",
+        "id": "line-1622192418405",
+        "instance": {},
+        "label": "get clinic ids",
+        "targetLabel": "get appointments",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "node1619284387432-right",
+        "target": "node1620741469799",
+        "id": "line-1622192421667",
+        "instance": {},
+        "label": "get appointments",
+        "targetLabel": "Return results",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      }
+    ]
+  },
+  "name": "getAppointments"
+}

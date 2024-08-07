@@ -1,0 +1,195 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1624429533852",
+        "x": 151,
+        "y": 217,
+        "height": 40,
+        "width": 103.7734375,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1624429538535",
+        "x": 693,
+        "y": 97,
+        "height": 40,
+        "width": 125.140625,
+        "clazz": "scriptTask",
+        "label": "visualBooking",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "let auth, patientSysNumber, slotsId, visualSlotsId, patientFound, authToken\r\n\r\n// Get token auth token\r\nconst getToken = async function() {\r\n    //$log('Get token running')\r\n    let url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\"\r\n    let bodyJson = {\r\n        \"grant_type\": \"password\",\r\n        \"username\": \"CCU|S1S1S1\",\r\n        \"password\": \"Password\",\r\n        \"scope\": \"full\"\r\n    },\r\n    clientId = \"ccoutpatients\",\r\n    secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\r\n    \r\n    authToken = await fetch(url, {method: \"post\",\r\n            headers: {\r\n                'Content-Type': 'application/json',\r\n                'Authorization': 'Basic ' + btoa(clientId + ':' + secret)\r\n            },\r\n            body: JSON.stringify(bodyJson)\r\n        })\r\n    try{\r\n        authToken = await authToken.json()\r\n    } catch(err){\r\n        $log('Something went wrong getting auth token')\r\n        $log(err)\r\n    }\r\n    \r\n    auth = authToken\r\n}\r\n\r\n// Get available slots function\r\nconst getSlots = async function(apptUrl) {\r\n    let url\r\n    if(apptUrl == 'normalUrl'){\r\n        url = \"https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/AvailableSlots/\" + context.payload.clinicId + \"/\" + context.payload.searchDate\r\n    } else if(apptUrl == 'visualUrl'){\r\n        url = \"https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/AvailableSlots/\" + context.payload.visualClinicId + \"/\" + context.payload.visualSearchDate\r\n    }\r\n    //$log(url)\r\n\r\n\r\n    let slotsArray = await fetch(url, {method: \"GET\",\r\n            headers: {\r\n                'Content-Type': 'application/json',\r\n                'Authorization': auth.token_type + ' ' + auth.access_token\r\n            }                   \r\n        })\r\n    slotsArray = await slotsArray.json()\r\n    //$log(slotsArray)\r\n    let allSlots = [...slotsArray.Sessions[0].Slots]\r\n    if(apptUrl == 'normalUrl' && allSlots){\r\n        allSlots.forEach(slot => {\r\n            let timeOfSlot = slot.Time.replace(\"*\", \"\")\r\n            if(timeOfSlot == context.payload.time){\r\n                slotsId = slot.SlotId\r\n            }\r\n        })\r\n    } else if(apptUrl == 'visualUrl' && allSlots){\r\n        allSlots.forEach(slot => {\r\n            let timeOfSlot = slot.Time.replace(\"*\", \"\")\r\n\r\n            if(timeOfSlot == context.payload.visualTime){\r\n                visualSlotsId = slot.SlotId\r\n            }\r\n        })\r\n    }\r\n}\r\n\r\n\r\n// Get patient function\r\nconst getPatient = async function() {\r\n    try{\r\n        //$log('Get Patient Running')\r\n        let patientUrl\r\n        patientUrl = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/PatientSearch/${context.payload.patientId}?idType=3`\r\n        let a = await fetch(patientUrl, {method: \"GET\",\r\n            headers: { 'Content-Type': 'application/json',\r\n                \"Authorization\": auth.token_type + \" \" + auth.access_token\r\n                }                   \r\n        })\r\n        let r = await a.json()\r\n        //console.log('final return')\r\n        //console.log(r)\r\n        //$log('first patient return' + ' ' + r)\r\n        context.data.patient = r\r\n\r\n        // If patient not found in compucare - create the patient\r\n        if(r.length == 0){\r\n            let createPatientUrl = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/PatientRecords`\r\n\r\n            let gender\r\n            \r\n            if(context.payload.sex == 'M'){\r\n                gender = 1\r\n            } else if(context.payload.sex == 'F'){\r\n                gender = 2\r\n            } else {\r\n                gender = 3\r\n            }\r\n\r\n            // Set up the patient object\r\n            let patientData\r\n\r\n            patientData = {\r\n                AddressLine1: context.payload.address,\r\n                DateDied: null,\r\n                DateOfBirth: context.payload.dateOfBirth,\r\n                DateOfBirthStr: context.payload.dateOfBirthString,\r\n                Deceased: \" \",\r\n                FamilyName: context.payload.lastName,\r\n                Fullname: `${context.payload.lastName}, ${context.payload.firstName} (${context.payload.salutation})`,\r\n                Gender: 1,\r\n                GivenNames: context.payload.firstName ? context.payload.firstName : 'NONE',\r\n                Image: null,\r\n                CaseNumber: context.payload.patientId.toString(),\r\n                NHSNumber: \"        \",\r\n                //SystemNumber: \"0000000\",\r\n                Title: context.payload.salutation,\r\n                onStop: false\r\n            }\r\n\r\n            if(context.payload.city) {\r\n                patientData[\"AddressLine3\"] = context.payload.city\r\n            }\r\n\r\n            if(context.payload.county) {\r\n                patientData[\"AddressLine4\"] = context.payload.county\r\n            }\r\n\r\n            if(context.payload.address2){\r\n                patientData[\"AddressLine2\"] = context.payload.address2\r\n            }\r\n\r\n            if(context.payload.postCode) {\r\n                patientData[\"Postcode\"] = context.payload.postCode\r\n            }\r\n\r\n            if(context.payload.mobile) {\r\n                patientData[\"Mobile\"] = context.payload.mobile\r\n            }\r\n\r\n            if(context.payload.email) {\r\n                patientData[\"Email\"] = context.payload.email\r\n            }\r\n\r\n            if(context.payload.home) {\r\n                patientData[\"Telephone\"] = context.payload.home\r\n            }\r\n\r\n            // if(r.length !== 0 && r[0].SystemNumber){\r\n            //     patientData[\"SystemNumber\"] = r[0].SystemNumber\r\n            // }\r\n\r\n\r\n            let result = await fetch(createPatientUrl, {\r\n                method: \"POST\",\r\n                headers: {\r\n                    'Content-Type': 'application/json',\r\n                    'Authorization': auth.token_type + ' ' + auth.access_token\r\n                },\r\n                body: JSON.stringify(patientData)\r\n            })\r\n\r\n            let creationResult = await result.json()\r\n\r\n            //$log('Creation Result ' + creationResult) \r\n            patientSysNumber = creationResult\r\n\r\n            context.data.SystemNumber = creationResult\r\n\r\n            // Get the newly registered patient\r\n            patientUrl = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/PatientSearch/${creationResult}?idType=1`\r\n                let a = await fetch(patientUrl, {method: \"GET\",\r\n            headers: { 'Content-Type': 'application/json',\r\n                \"Authorization\": auth.token_type + \" \" + auth.access_token\r\n                }                   \r\n            })\r\n\r\n            let res = await a.json()\r\n            //$log('newly registered patient')\r\n            //$log(res)\r\n            context.data.patient = res\r\n        } else {\r\n            //$log('Patient found')\r\n            //$log(r[0])\r\n            patientFound = r[0]\r\n            patientSysNumber = patientFound.SystemNumber\r\n        }\r\n    } catch(err) {\r\n        console.log(err)\r\n        console.error(err)\r\n        $log('Error retreving patient data in single appt booking')\r\n        $log(err)\r\n    }\r\n}\r\n\r\n// Book appointment function\r\nconst bookAppt = async function(){\r\n    function IsJsonString(str) {\r\n        try {\r\n            JSON.parse(str);\r\n        } catch (e) {\r\n            return false;\r\n        }\r\n        return true;\r\n    }\r\n\r\n    try{\r\n        if(slotsId && visualSlotsId){\r\n            let appointment = { \r\n            \"SlotId\": slotsId, \r\n            \"PatientSystemNumber\": patientSysNumber,\r\n            \"Duration\": `${context.payload.duration}`,  \r\n            \"Notes\": \"\",  \r\n            \"Purchaser\": \"NONE\",\r\n            \"AuthCode\": \"\",\r\n            \"MembershipNo\": \"\"\r\n            }\r\n\r\n            let visualAppointment = { \r\n                \"SlotId\": visualSlotsId, \r\n                \"PatientSystemNumber\": patientSysNumber,\r\n                \"Duration\": `${context.payload.visualDuration}`,  \r\n                \"Notes\": \"\",  \r\n                \"Purchaser\": \"NONE\",\r\n                \"AuthCode\": \"\",\r\n                \"MembershipNo\": \"\"\r\n            }\r\n\r\n            //$log(appointment)\r\n            //$log(visualAppointment)\r\n\r\n            console.log(slotsId)\r\n            console.log(visualSlotsId)\r\n\r\n        //     console.log(slotsId, visualSlotsId)\r\n\r\n            url = \"https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/Bookings\"\r\n            let b = await fetch(url, {method: \"post\",\r\n            headers: { 'Content-Type': 'application/json',\r\n                \"Authorization\": auth.token_type + \" \" + auth.access_token\r\n                },\r\n                body: JSON.stringify(appointment)                  \r\n            })\r\n\r\n            //$log('about to make first appointment')\r\n\r\n            //$log(b)\r\n\r\n            let resp\r\n\r\n            resp = await b.text()\r\n\r\n            let isJSON = IsJsonString(resp)\r\n\r\n            if(isJSON) {\r\n                resp = JSON.parse(resp)\r\n            }\r\n\r\n            if(resp.BookingId){\r\n                context.payload.bookingID = resp.BookingId\r\n            }\r\n\r\n            context.data.response = resp\r\n            context.data.BookingId = resp.BookingId\r\n\r\n            url = \"https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/Bookings\"\r\n            b = await fetch(url, {method: \"post\",\r\n                headers: { 'Content-Type': 'application/json',\r\n                    \"Authorization\": auth.token_type + \" \" + auth.access_token\r\n                    },\r\n                    body: JSON.stringify(visualAppointment)                  \r\n            })\r\n\r\n            resp = await b.text()\r\n\r\n            isJSON = IsJsonString(resp)\r\n\r\n            if(isJSON) {\r\n                resp = JSON.parse(resp)\r\n            }\r\n\r\n            if(resp.BookingId){\r\n                context.payload.visualBookingID = resp.BookingId\r\n            }\r\n\r\n            context.data.visualResponse = resp\r\n            context.data.visualBookingId = resp.BookingId\r\n        } else {\r\n            context.data.response = \"Sorry, we were unable to book at least one of the slots, try different ones\"\r\n        }\r\n    } catch(err) {\r\n        $log('Error making the appt in visual appt bookings')\r\n        $log(err)\r\n    }\r\n}\r\n\r\n$log('before get token')\r\nawait getToken()\r\n$log('before get normal slots')\r\nawait getSlots('normalUrl')\r\n$log('before get visual slots')\r\nawait getSlots('visualUrl')\r\n$log('before get patient')\r\nawait getPatient()\r\n$log('before get book appointment')\r\nawait bookAppt()"
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1624854665296",
+        "x": 414,
+        "y": 97,
+        "width": 134.453125,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "salesforce login",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try {\n    context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n    const username = \"sebastian@tangle.io.partialdev\";\n    const securityToken = \"zXo1sdkg4BiWZnsCQf40n0TL\";\n    const password = \"Moorfield$test123456\" + securityToken;\n\n    let login =  await context.conn.login(username, password)\n\n    context.login = login \n\n} catch(err) {\n    $log('invalid sf login get appts')\n    $log(err)\n}"
+        }
+      },
+      {
+        "id": "node1624855301887",
+        "x": 1143,
+        "y": 137,
+        "width": 152.734375,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "update conversion",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "\n\n//$log('updating conversion record')\n\n//$log(context.payload)\n\n\nlet conversionId = context.payload.conversionId || 'a0A4L00000642kXUAQ'\nlet solutionId = context.payload.solutionId ||'a0H4L000001RMULUA4'\n\n//$log('solution is ' + solutionId + 'conversion is ' + conversionId)\n\ntry {\n  let solution = await context.conn.sobject(\"Solution__c\").retrieve(solutionId)\n  //$log(solution)\n  let date = new Date(context.payload.visualSearchDate + ' ' + context.payload.visualTimeOffset)\n  //let reformatDate = context.payload.reformattedDate\n  let reformatDate = context.payload.reformattedVisualDate\n\n    //$log(context.payload.time)\n    //$log(date)\n    //$log(reformatDate)\n\n\n    let patients = await context.conn\n    .sobject(\"Patient__c\")\n    .find({ 'Patient_ID__c': context.payload.patientId})\n\n    .select('*') // asterisk means all fields in specified level are targeted.\n    .execute((err, record) => {\n      if (err) {\n        return err;\n      } else {\n        if (record.length !== 0) {\n          return record;\n        } else return false;\n      }\n    });\n\n    let sfPatientId = null \n    if (patients){\n      sfPatientId = patients[0].Id\n      let updatePatient = await context.conn.sobject('Patient__c').update(\n        {\n          Id: sfPatientId,\n          Date_of_Birth__c: context.payload.dateOfBirth ? context.payload.dateOfBirth : '',\n          Email__c: context.payload.email ? context.payload.email : '',\n          Salutation__c: context.payload.salutation ? context.payload.salutation : '',\n          Mobile_Phone__c: context.payload.mobile ? context.payload.mobile : '',\n          Home_Phone__c: context.payload.home ? context.payload.home : '',\n          Int_Phone__c: context.payload.internationalPhone ? context.payload.internationalPhone : '',\n          Street__c: context.payload.address ? context.payload.address : '',\n          City_Town__c: context.payload.city ? context.payload.city : '',\n          County_Region__c: context.payload.county ? context.payload.county : '',\n          Post_Code__c: context.payload.postCode ? context.payload.postCode : ''\n        }\n      )\n\n      //$log('conversion patient found')\n      //$log(patients[0])\n    }\n    else {\n      let newPatient = await context.conn.sobject(\"Patient__c\").create( \n        { \n          First_Name__c : context.payload.firstName ? context.payload.firstName : '',\n          Last_Name__c :context.payload.lastName ? context.payload.lastName : '',\n          Date_of_Birth__c: context.payload.dateOfBirth ? context.payload.dateOfBirth : '',\n          Email__c: context.payload.email ? context.payload.email : '',\n          Salutation__c: context.payload.salutation ? context.payload.salutation : '',\n          Mobile_Phone__c: context.payload.mobile ? context.payload.mobile : '',\n          Home_Phone__c: context.payload.home ? context.payload.home : '',\n          Int_Phone__c: context.payload.internationalPhone ? context.payload.internationalPhone : '',\n          Street__c: context.payload.address ? context.payload.address : '',\n          City_Town__c: context.payload.city ? context.payload.city : '',\n          County_Region__c: context.payload.county ? context.payload.county : '',\n          Post_Code__c: context.payload.postCode ? context.payload.postCode : '',\n          Patient_ID__c: context.payload.patientId\n        }\n      )\n      sfPatientId = newPatient.id\n      //$log('new patient created')\n      //$log(newPatient)\n    }\n\n\n\n\n\nif(context.payload.visualBookingID && context.payload.bookingID){\n  let des = context.payload.paramsConsultant ? 'Designated' : 'Undesignated'\n\n\n    //get the solution ID\n  let locationText = solution.Location__c\n  let locationID = 'a0J4L0000009DApUAM'\n\n\n  if (locationText == 'Moorfields Private Outpatient Centre') locationID = 'a0J4L0000009DApUAM'\n\n  if (locationText == \"Richard Desmond Children's Eye Centre\") locationID = 'a0J4L0000009DF2UAM'\n\n  if (locationText == \"Bedford\") locationID = 'a0J4L0000009DF7UAM'\n\n  if (locationText == \"Purley\") locationID = 'a0J4L0000009DFCUA2'\n\n  if (locationText == \"New Cavendish Street\") locationID = 'a0J4L0000009DFHUA2'\n\n  if (locationText == \"Northwick Park\") locationID = 'a0J4L0000009DFMUA2'\n\n  let updateConversionObject = {\n          Id: conversionId,\n          Appointment_Booked_By__c:context.payload.userId,\n          Orthoptist_Charge__c: solution.Orthoptist_Charge__c,\n          Appointment_Consultant__c:solution.Consultant__c,\n  //        Appointment_Location__c:solution.Location__c,\n          Designated_Undesignated__c: des,\n          Consultant_Fee__c:solution.Consultant_Fee__c,\n          Visual_Acuity_Assessment_Fee__c:solution.Visual_Acuity_Assessment_Fee__c,\n          International_Consultant_Fee__c:solution.International_Consultant_Fee__c,\n          International_Orthoptist_Charge__c:solution.International_Orthoptist_Charge__c,\n\n          //Initial Search\n          Initial_Search_First_Name__c: context.payload.firstName ? context.payload.firstName : '',\n          Initial_Search_Last_Name__c: context.payload.lastName ? context.payload.lastName : '',\n          Initial_Search_Post_Code__c: context.payload.postCode ? context.payload.postCode : '',\n          Initial_Search_Email__c: context.payload.email ? context.payload.email : '',\n\n          // International Phone\n          Int_Phone__c: context.payload.internationalPhone ? context.payload.internationalPhone : '',\n\n          Visual_Test_Price__c:solution.Visual_Test__c,\n          Appointment_Location__c:locationID,\n          Patient_Record_Number1__c: sfPatientId,\n          Appointment_Date_and_Time__c: date,\n          Appointment_Time__c: context.payload.visualTime,\n          Appointment_Date__c: reformatDate,\n          Booking_ID__c:context.data.BookingId,\n          SolutionNew__c:solutionId,\n          Date_of_Birth__c: context.payload.dateOfBirth ? context.payload.dateOfBirth : '',\n        }\n\n          if(context.payload.sfGender) {\n          updateConversionObject.Initial_Search_Sex = sfGender\n        }\n\n  let updateConversion = await context.conn.sobject(\"Conversion__c\").update(updateConversionObject);\n      \n    //$log('update conversion result ')\n    //$log(updateConversion)\n\n    // get the solutions list \n    let nsearch = `Consultant__c = '${solution.Consultant__c}' AND Specialty__c = '${solution.Specialty__c}'`\n    let nsolutions = await context.conn\n        .sobject(\"Solution__c\")\n        .select('*') // asterisk means all fields in specified level are targeted.\n      .where(nsearch)\n        .execute((err, record) => {\n          if (err) {\n            return err;\n          } else {\n            if (record.length !== 0) {\n              return record;\n            } else return false;\n          }\n        });\n    //$log('solutions are ' + nsearch)\n  \n    // add 1 to it \n\n    // update the solutuions \n    let i = 0\n    while (i < nsolutions.length) {\n      //$log(nsolutions[i].Id)\n            let count = (nsolutions[i].Conversions__c || 0) + 1\n            //$log(count)\n              let updatedSolution = await context.conn.sobject(\"Solution__c\").update({\n                Id:nsolutions[i].Id,\n                Conversions__c:count\n              }\n            );\n      i++;\n    }\n}\n\n}\ncatch (err){\n  $log('Error updating conversion in visual appt booking')\n  $log(err)\n  console.error(err)\n  console.log(err)\n}\n"
+        }
+      },
+      {
+        "id": "node1624957537346",
+        "x": 1423,
+        "y": 177,
+        "width": 191.1015625,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "update visual conversion",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "//$log('updating visual conversion record')\r\n\r\n//$log(context.payload)\r\n\r\n\r\nlet conversionId = context.payload.visualConversionId || 'a0A4L00000642kXUAQ'\r\nlet solutionId = context.payload.visualSolutionId ||'a0H4L000001RMULUA4'\r\n\r\n//$log('visual solution is ' + solutionId + 'visual conversion is ' + conversionId)\r\n\r\ntry {\r\n  let solution = await context.conn.sobject(\"Solution__c\").retrieve(solutionId)\r\n  //$log(solution)\r\n  let date = new Date(context.payload.visualSearchDate + ' ' + context.payload.visualTimeOffset)\r\n  let reformatDate = context.payload.reformattedVisualDate\r\n    //$log(date)\r\n    //$log(context.payload.visualTime)\r\n    //$log(reformatDate)\r\n\r\n\r\n    let patients = await context.conn\r\n    .sobject(\"Patient__c\")\r\n    .find({ 'Patient_ID__c': context.payload.patientId})\r\n\r\n    .select('*') // asterisk means all fields in specified level are targeted.\r\n    .execute((err, record) => {\r\n      if (err) {\r\n        return err;\r\n      } else {\r\n        if (record.length !== 0) {\r\n          return record;\r\n        } else return false;\r\n      }\r\n    });\r\n\r\n    let sfPatientId = null \r\n    if (patients){\r\n      sfPatientId = patients[0].Id\r\n      //$log('patient found')\r\n\r\n    }\r\n    else {\r\n      let newPatient = await context.conn.sobject(\"Patient__c\").create(\r\n        \r\n        { First_Name__c : context.payload.patientInfo.First_Name__c,\r\n         Last_Name__c :context.payload.patientInfo.Last_Name__c,\r\n         Patient_ID__c:context.payload.patientId\r\n         \r\n         \r\n         }\r\n      )\r\n      sfPatientId = newPatient.id\r\n      //$log('new patient created')\r\n      //$log(newPatient)\r\n    }\r\n\r\n\r\n\r\n  //get the solution ID\r\n  let locationText = solution.Location__c\r\n  let locationID = 'a0J4L0000009DApUAM'\r\n\r\n\r\n  if (locationText == 'Moorfields Private Outpatient Centre') locationID = 'a0J4L0000009DApUAM'\r\n\r\n  if (locationText == \"Richard Desmond Children's Eye Centre\") locationID = 'a0J4L0000009DF2UAM'\r\n\r\n  if (locationText == \"Bedford\") locationID = 'a0J4L0000009DF7UAM'\r\n\r\n  if (locationText == \"Purley\") locationID = 'a0J4L0000009DFCUA2'\r\n\r\n  if (locationText == \"New Cavendish Street\") locationID = 'a0J4L0000009DFHUA2'\r\n\r\n  if (locationText == \"Northwick Park\") locationID = 'a0J4L0000009DFMUA2'\r\n\r\n\r\n\r\n\r\n  let updateConversion = await context.conn.sobject(\"Conversion__c\").update(\r\n        {\r\n          Id: conversionId,\r\n          Orthoptist_Charge__c: solution.Orthoptist_Charge__c,\r\n          Appointment_Consultant__c:solution.Consultant__c,\r\n  //        Appointment_Location__c:solution.Location__c,\r\n          //Designated_Undesignated__c: `${context.payload.paramsConsultant} ? 'Designated' : 'Undesignated'`,\r\n          Consultant_Fee__c:solution.Consultant_Fee__c,\r\n          Visual_Acuity_Assessment_Fee__c:solution.Visual_Acuity_Assessment_Fee__c,\r\n          International_Consultation_Price__c:solution.International_Consultation_Price__c,\r\n          International_Orthoptist_Charge__c:solution.International_Orthoptist_Charge__c,\r\n          Visual_Test_Price__c:solution.Visual_Test__c,\r\n          Appointment_Location__c:locationID,\r\n          Patient_Record_Number1__c: sfPatientId,\r\n          Appointment_Date_and_Time__c:date,\r\n          Appointment_Time__c: context.payload.visualTime,\r\n          Appointment_Date__c: reformatDate,\r\n          Booking_ID__c: context.data.visualBookingId,\r\n          Date_of_Birth__c: context.payload.dateOfBirth ? context.payload.dateOfBirth : '',\r\n        }\r\n      );\r\n\r\n    //$log('update conversion result ')\r\n    //$log(updateConversion)\r\n\r\n    \r\n\r\n}\r\ncatch (err){\r\n  $log('Error updating conversion in visual appt booking')\r\n  $log(err)\r\n  console.error(err)\r\n  console.log(err)\r\n\r\n}\r\n"
+        }
+      },
+      {
+        "id": "node1626627475487",
+        "x": 925,
+        "y": 83,
+        "width": 100,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "addNotes",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try{\r\n    // Get authorization token\r\n    let url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\"\r\n    let bodyJson = {\r\n        \"grant_type\": \"password\",\r\n        \"username\": \"CCU|S1S1S1\",\r\n        \"password\": \"Password\",\r\n        \"scope\": \"full\"\r\n    },\r\n    clientId = \"ccoutpatients\",\r\n    secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";         \r\n\r\n    let d = await fetch(url, \r\n        {method: \"post\",\r\n        headers: { 'Content-Type': 'application/json',\r\n                \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\r\n                },\r\n        body: JSON.stringify(bodyJson)\r\n            })\r\n\r\n    let json = await d.json()\r\n    let auth = json\r\n\r\n\r\n    // Add notes to normal booking\r\n\r\n    let normalApptNotes = {\r\n        notes: `NEW PATIENT - [${context.payload.condition}]\r\n                [${context.payload.speciality}]\r\n                [${context.payload.insurer}]\r\n                [${(context.payload.paramsConsultant.length > 0) ? 'DESIGNATED' : 'UNDESIGNATED'}]`\r\n    }\r\n\r\n    //$log('notes')\r\n    //$log(normalApptNotes)\r\n\r\n    url = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/Bookings/${context.payload.bookingID}`\r\n    let b = await fetch(url, {method: \"post\",\r\n    headers: { 'Content-Type': 'application/json',\r\n        \"Authorization\": auth.token_type + \" \" + auth.access_token\r\n        },\r\n        body: JSON.stringify(normalApptNotes)                  \r\n    })\r\n\r\n    let resp\r\n\r\n    resp = await b.text()\r\n    // $log('added notes')\r\n    // $log(resp)\r\n\r\n    // Add notes to visual booking\r\n\r\n    let visualApptNotes = {\r\n        notes: `VISUAL FIELDS FOR ${context.payload.consultant}`\r\n    }\r\n\r\n    url = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/Bookings/${context.payload.visualBookingID}`\r\n    b = await fetch(url, {method: \"post\",\r\n    headers: { 'Content-Type': 'application/json',\r\n        \"Authorization\": auth.token_type + \" \" + auth.access_token\r\n        },\r\n        body: JSON.stringify(visualApptNotes)                  \r\n    })\r\n\r\n    resp = await b.text()\r\n    // $log('added notes')\r\n    // $log(resp)\r\n} catch(err) {\r\n    $log('Error adding notes in visual appt booking')\r\n    $log(err)\r\n}\r\n\r\n\r\n\r\n\r\n"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1624429533852-right",
+        "target": "node1624854665296",
+        "endSocket": "left",
+        "id": "line-1624854688992",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "salesforce login",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1624854665296-right",
+        "target": "node1624429538535",
+        "endSocket": "top",
+        "id": "line-1624854692127",
+        "instance": {},
+        "label": "salesforce login",
+        "targetLabel": "visualBooking",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1624855301887-right",
+        "target": "node1624957537346",
+        "endSocket": "left",
+        "id": "line-1624957550952",
+        "instance": {},
+        "label": "update conversion",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1624429538535-right",
+        "target": "node1626627475487",
+        "endSocket": "left",
+        "id": "line-1626628015873",
+        "instance": {},
+        "label": "visualBooking",
+        "targetLabel": "addNotes",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1626627475487-right",
+        "target": "node1624855301887",
+        "endSocket": "left",
+        "id": "line-1626628020290",
+        "instance": {},
+        "label": "addNotes",
+        "targetLabel": "update conversion",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "create visual appt"
+}

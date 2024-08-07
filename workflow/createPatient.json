@@ -1,0 +1,61 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1623242286465",
+        "x": 467,
+        "y": 342,
+        "height": 40,
+        "width": 166.6796875,
+        "clazz": "scriptTask",
+        "label": "create patient in PAS",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "//test patient creation \r\n\r\ntry {\r\n    context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\r\n    const username = \"sebastian@tangle.io.partialdev\";\r\n    const securityToken = \"zXo1sdkg4BiWZnsCQf40n0TL\";\r\n    const password = \"Moorfield$test123456\" + securityToken;\r\n\r\n    let login =  await context.conn.login(username, password)\r\n\r\n    context.login = login \r\n\r\n} catch(err) {\r\n    $log('invalid sf login get appts')\r\n    $log(err)\r\n}\r\n\r\n\r\n\r\n\r\n\r\nvar session_url = 'https://mehrhapsody-de.moorfields.nhs.uk:453/patient/search?last_name=Ellen';\r\nsession_url = 'https://194.74.145.110:463/patient/search?last_name=Ellen';\r\nvar username = 'AuthorisedCRMClient';\r\nvar password = '3m3R@LD';\r\n\r\n\r\n  const token = Buffer.from(`${username}:${password}`, 'utf8').toString('base64')\r\n\r\n\r\n\r\n\r\n  const url = session_url\r\n\r\n\r\nlet data = {}\r\n\r\n\r\nif(context.payload.city){\r\n    data['City_Town__c'] = context.payload.city\r\n} else {\r\n    data['City_Town__c'] = ''\r\n}\r\nif(context.payload.country){\r\n    data['Country__c']  = context.payload.country\r\n} else {\r\n    data['Country__c']  = ''\r\n}\r\nif(context.payload.county){\r\n    data['County_Region__c'] = context.payload.county\r\n} else {\r\n    data['County_Region__c'] = ''\r\n}\r\nif(context.payload.email){\r\n    data['Email__c'] = context.payload.email\r\n}\r\nif(context.payload.firstName){\r\n    data['First_Name__c'] = context.payload.firstName\r\n}\r\nif(context.payload.lastName){\r\n    data['Last_Name__c'] = context.payload.lastName\r\n}\r\nif(context.payload.salutation){\r\n    data['Salutation__c'] = context.payload.salutation\r\n}\r\nif(context.payload.dob){\r\n    data['Date_of_Birth'] = context.payload.dob\r\n}\r\nif(context.payload.sex){\r\n    data['Sex__c'] = context.payload.sex\r\n}\r\n\r\nif(context.payload.mobile){\r\n    data['Mobile_Phone__c'] = context.payload.mobile\r\n}\r\n\r\nif(context.payload.home){\r\n    data['Home_Phone__c'] = context.payload.home\r\n}\r\n\r\nif(context.payload.internationalPhone){\r\n    data['Int_Phone__c'] = context.payload.internationalPhone\r\n}\r\n\r\nif(context.payload.postCode){\r\n    data['Post_Code__c'] = context.payload.postCode\r\n} else {\r\n    data['Post_Code__c'] = ''\r\n}\r\nif(context.payload.address){\r\n    data['Street__c'] = context.payload.address\r\n} else {\r\n    data['Street__c'] = ''\r\n}\r\n\r\nif(context.payload.address2){\r\n    data['addr2'] = context.payload.address2\r\n} else {\r\n    data['addr2'] = ''\r\n}\r\n\r\n    const agent = new https.Agent({\r\n    ca: fs.readFileSync(\"./routes/CRMProd_2024.cer\"),        \r\n    cert: fs.readFileSync(\"./routes/ca2024.crt\"),\r\n    key: fs.readFileSync(\"./routes/ca2024.key\"), \r\n    rejectUnauthorized: false,\r\n    headers: {\r\n    'Authorization': `Basic ${token}`\r\n    },\r\n  });\r\n\r\nconsole.log('about to get data from pas')\r\n\r\ntry {\r\n\r\n    \r\n\r\nconst url = 'https://194.74.145.110:463/patient/search'\r\n\r\nlet buf = await axios({\r\n  method: 'post',\r\n  url: url,\r\n  timeout: 1000 * 60,\r\n  data: JSON.stringify(data),\r\n  httpsAgent: agent\r\n});\r\n\r\n\r\n\r\n // let buf = await axios.post(url, {\r\n//    httpsAgent: agent,\r\n//    body:JSON.stringify(data),\r\n//    headers: {\r\n//  'Authorization': `Basic ${token}`\r\n//  },\r\n // })\r\n  //$log('new patient data is ')\r\n    //$log(data)\r\n  console.log(buf.data)\r\n  context.data = buf.data\r\n\r\n    delete data.Date_of_Birth\r\n    delete data.Salutation__c\r\n    delete data.addr2\r\n\r\n    let patientID = buf.data.Patient_ID__c\r\n\r\n     data.Patient_ID__c=patientID   \r\n\r\n    let newPatient = await context.conn.sobject(\"Patient__c\").create(\r\n    \r\n        data\r\n    )\r\n    //$log('patient created')\r\n    //$log(newPatient)\r\n\r\n\r\n}\r\n\r\ncatch(err)\r\n  {\r\n      $log(err.message)\r\n    console.log(err.message)\r\n    context.data = err.message\r\n\r\n  }"
+        },
+        "display": true,
+        "dispaly": false
+      },
+      {
+        "id": "node1623242301143",
+        "x": 201,
+        "y": 342,
+        "height": 40,
+        "width": 103.7734375,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1623242301143-right",
+        "target": "node1623242286465",
+        "id": "line-1623242307203",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      }
+    ]
+  },
+  "name": "createPatient"
+}

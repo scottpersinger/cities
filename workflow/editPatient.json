@@ -1,0 +1,94 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1624258364006",
+        "x": 171,
+        "y": 285,
+        "height": 40,
+        "width": 103.7734375,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1624258367736",
+        "x": 415,
+        "y": 285,
+        "height": 40,
+        "width": 111.34375,
+        "clazz": "scriptTask",
+        "label": "Edit Patient",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "var username = 'AuthorisedCRMClient';\r\nvar password = '3m3R@LD';\r\n\r\n\r\n    // replace newline with a simple comma\r\n    context.payload.address = context.payload.address.replace('\\n', ',')\r\n\r\nconst token = Buffer.from(`${username}:${password}`, 'utf8').toString('base64')\r\n\r\n\r\n    const agent = new https.Agent({\r\n    ca: fs.readFileSync(\"./routes/CRMProd_2024.cer\"),        \r\n    cert: fs.readFileSync(\"./routes/ca2024.crt\"),\r\n    key: fs.readFileSync(\"./routes/ca2024.key\"), \r\n    rejectUnauthorized: false,\r\n    headers: {\r\n    'Authorization': `Basic ${token}`\r\n    },\r\n  });\r\n\r\nconst url = 'https://194.74.145.110:463/patient/search'\r\n\r\nlet data = {}\r\n\r\n\r\nif(context.payload.city){\r\n    data['City_Town__c'] = context.payload.city\r\n} else {\r\n    data['City_Town__c'] = ''\r\n}\r\nif(context.payload.country){\r\n    data['Country__c']  = context.payload.country\r\n} else {\r\n     data['Country__c']  = ''\r\n}\r\nif(context.payload.county){\r\n    data['County_Region__c'] = context.payload.county\r\n} else {\r\n    data['County_Region__c'] = ''\r\n}\r\nif(context.payload.email){\r\n    data['Email__c'] = context.payload.email\r\n} else {\r\n    data['Email__c'] = ''\r\n}\r\nif(context.payload.firstName){\r\n    data['First_Name__c'] = context.payload.firstName\r\n}\r\nif(context.payload.lastName){\r\n    data['Last_Name__c'] = context.payload.lastName\r\n}\r\n\r\nif(context.payload.salutation){\r\n    data['Salutation__c'] = context.payload.salutation\r\n}\r\n\r\n// if(context.payload.dob){\r\n//     data['Date_of_Birth'] = context.payload.dob\r\n// }\r\n\r\nif(context.payload.sex){\r\n    data['Sex__c'] = context.payload.sex\r\n}\r\nif(context.payload.mobile){\r\n    data['Mobile_Phone__c'] = context.payload.mobile\r\n}\r\n\r\nif(context.payload.homePhone){\r\n    data['Home_Phone__c'] = context.payload.homePhone\r\n}\r\n\r\nif(context.payload.internationalPhone){\r\n    data['Int_Phone__c'] = context.payload.internationalPhone\r\n}\r\n\r\nif(context.payload.postCode){\r\n    data['Post_Code__c'] = context.payload.postCode\r\n} else {\r\n    data['Post_Code__c'] = ''\r\n}\r\nif(context.payload.address){\r\n    data['Street__c'] = context.payload.address\r\n} else {\r\n    data['Street__c'] = ''\r\n}\r\n\r\n\r\nif(context.payload.address2){\r\n    data['addr2'] = context.payload.address2\r\n} else {\r\n    data['addr2'] = ''\r\n}\r\n\r\ndata['Patient_ID__c'] = context.payload.patientID\r\n\r\n\r\n\r\n//$log('EDIT DATA IS')\r\n//$log(data)\r\n\r\n//$log('About to edit patient')\r\n\r\n\r\n\r\n//context.data = context.payload\r\ntry {\r\n    context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\r\n    const username = \"sebastian@tangle.io.partialdev\";\r\n    const securityToken = \"CzFZMU9zZyhcPjetlk6lE4SL\";\r\n    const password = \"Moorfield$test12345\" + securityToken;\r\n\r\n    let login =  await context.conn.login(username, password)\r\n\r\n    context.login = login \r\n\r\n} catch(err) {\r\n    $log('invalid sf login')\r\n    $log(err)\r\n}\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\nlet patientID = null\r\n\r\n\r\ntry {\r\n    let buf = await axios({\r\n    method: 'post',\r\n    url: url,\r\n    timeout: 1000 * 60,\r\n    data: JSON.stringify(data),\r\n    httpsAgent: agent\r\n    });\r\n\r\n    console.log(buf.data)\r\n    context.data = buf.data\r\n    //$log(buf.data)\r\n      //$log('data sent to pas is ')\r\n    //$log(data)\r\n\r\n    //$log(buf.data.Patient_ID__c)\r\n    patientID = buf.data.Patient_ID__c\r\n\r\n    \r\n} catch(err) {\r\n    console.log(err.message)\r\n    context.data = err.message\r\n    $log(err.message)\r\n}\r\n\r\n"
+        },
+        "display": false,
+        "dispaly": false
+      },
+      {
+        "id": "node1629271574301",
+        "x": 717,
+        "y": 285,
+        "width": 115.984375,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "Update in SF",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "//$log('updating patient in salsesforce')\r\n//$log(context.payload.patientID)\r\ntry{\r\n\r\n\r\n\r\n    let patients = await context.conn\r\n    .sobject(\"Patient__c\")\r\n    .find({ 'Patient_ID__c': context.payload.patientID})\r\n\r\n    .select('*') // asterisk means all fields in specified level are targeted.\r\n    .execute((err, record) => {\r\n      if (err) {\r\n        return err;\r\n      } else {\r\n        if (record.length !== 0) {\r\n          return record;\r\n        } else return false;\r\n      }\r\n    });\r\n\r\n    delete data.Date_of_Birth\r\n    delete data.Salutation__c\r\n    delete data.addr2\r\n\r\n    let sfPatientId = null \r\n    if (patients){\r\n      sfPatientId = patients[0].Id\r\n      //$log('patient found' + sfPatientId)\r\n\r\n      //$log(context.payload.dob)\r\n      let data = {\r\n          Id: sfPatientId,\r\n          Email__c: context.payload.email ? context.payload.email : '',\r\n          Salutation__c: context.payload.salutation ? context.payload.salutation : '',\r\n          Mobile_Phone__c: context.payload.mobile ? context.payload.mobile : '',\r\n          Home_Phone__c: context.payload.home ? context.payload.home : '',\r\n          Int_Phone__c: context.payload.internationalPhone ? context.payload.internationalPhone : '',\r\n          Street__c: context.payload.address ? context.payload.address : '',\r\n          City_Town__c: context.payload.city ? context.payload.city : '',\r\n          County_Region__c: context.payload.county ? context.payload.county : '',\r\n          Post_Code__c: context.payload.postCode ? context.payload.postCode : '',\r\n      }\r\n\r\n      //$log(data)\r\n      let updateConversion = await context.conn.sobject(\"Patient__c\").update(\r\n        {\r\n          Id: sfPatientId,\r\n          //Date_of_Birth__c: context.payload.dob ? context.payload.dob : '',\r\n          Email__c: context.payload.email ? context.payload.email : '',\r\n          //Salutation__c: context.payload.salutation ? context.payload.salutation : '',\r\n          Mobile_Phone__c: context.payload.mobile ? context.payload.mobile : '',\r\n          Home_Phone__c: context.payload.home ? context.payload.home : '',\r\n          Int_Phone__c: context.payload.internationalPhone ? context.payload.internationalPhone : '',\r\n          Street__c: context.payload.address ? context.payload.address : '',\r\n          City_Town__c: context.payload.city ? context.payload.city : '',\r\n          County_Region__c: context.payload.county ? context.payload.county : '',\r\n          Post_Code__c: context.payload.postCode ? context.payload.postCode : '',\r\n        }\r\n      );\r\n      //$log('conversion patient found')\r\n      //$log(patients[0])\r\n    }\r\n    else {\r\n      let newPatient = await context.conn.sobject(\"Patient__c\").create(\r\n        { \r\n          First_Name__c : context.payload.firstName ? context.payload.firstName : '',\r\n          Last_Name__c :context.payload.lastName ? context.payload.lastName : '',\r\n          Date_of_Birth__c: context.payload.dob ? context.payload.dob : '',\r\n          Email__c: context.payload.email ? context.payload.email : '',\r\n          Salutation__c: context.payload.salutation ? context.payload.salutation : '',\r\n          Mobile_Phone__c: context.payload.mobile ? context.payload.mobile : '',\r\n          Int_Phone__c: context.payload.internationalPhone ? context.payload.internationalPhone : '',\r\n          Home_Phone__c: context.payload.home ? context.payload.home : '',\r\n          Street__c: context.payload.address ? context.payload.address : '',\r\n          City_Town__c: context.payload.city ? context.payload.city : '',\r\n          County_Region__c: context.payload.county ? context.payload.county : '',\r\n          Post_Code__c: context.payload.postCode ? context.payload.postCode : '',\r\n          Patient_ID__c:context.payload.patientId\r\n        }\r\n      )\r\n      sfPatientId = newPatient.id\r\n      //$log('new patient created')\r\n      //$log(newPatient)\r\n    }\r\n\r\n} catch(err){\r\n  $log(err)\r\n  $log('Error trying to update patient in SF')\r\n}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1624258364006-right",
+        "target": "node1624258367736",
+        "id": "line-1624258382630",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Edit Patient",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "node1624258367736-right",
+        "target": "node1629271574301",
+        "endSocket": "left",
+        "id": "line-1629271595685",
+        "instance": {},
+        "label": "Edit Patient",
+        "targetLabel": "Update in SF",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "editPatient"
+}

@@ -1,0 +1,14 @@
+{
+  "gsOptions": {
+    "h": 6,
+    "w": 12,
+    "x": 1,
+    "y": 0
+  },
+  "hidden": true,
+  "layout": "b-card",
+  "offSet": 0,
+  "perPage": 2,
+  "tab": "-MXaJglaBHyrW6lvy54G",
+  "template": "<pre>\n    {{ JSON.stringify($getGrid('patientSilverlink')), null, 2    }}\n</pre>"
+}

@@ -1,0 +1,98 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1673610211052",
+        "x": "231",
+        "y": "262",
+        "width": 103.3749771118164,
+        "height": 40,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1673610212822",
+        "x": "437",
+        "y": "291",
+        "width": 106.2249984741211,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "Script Task",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": ""
+        }
+      },
+      {
+        "id": "node1673610216283",
+        "x": "715",
+        "y": "359",
+        "width": 100,
+        "height": 40,
+        "clazz": "endEvent",
+        "label": "End Event",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1673610211052-right",
+        "target": "node1673610212822",
+        "endSocket": "left",
+        "id": "line-1673610214367",
+        "instance": {
+          "id": "line-1673610214367",
+          "anchor": "node1673610211052-right"
+        },
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1673610212822-right",
+        "target": "node1673610216283",
+        "endSocket": "left",
+        "id": "line-1673610218185",
+        "instance": {
+          "id": "line-1673610218185",
+          "anchor": "node1673610212822-right"
+        },
+        "label": "Script Task",
+        "targetLabel": "End Event",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "test"
+}

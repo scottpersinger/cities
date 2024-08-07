@@ -1,0 +1,158 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1676144158264",
+        "x": -122,
+        "y": 98,
+        "width": 103.77342224121094,
+        "height": 40,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1676144274395",
+        "x": 396,
+        "y": 98,
+        "width": 159.046875,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "cancelAppointment",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "// Get compucare token\nlet url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\" \n\nconst timeout = i => new Promise(resolve => setTimeout(() => resolve(i), i));\nlet auth = null \nlet text = null \nlet token = null;\n\nasync function cancelBooking() {\n    let auth = await getOAuthToken();\n    \n    if(!auth) {\n        setError('Unable to log into compucare.');\n        return;\n    }\n\n    try {\n        let bookingID = context.payload.bookingID;\n        let cancellationReason = context.payload.cancellationReason;\n        await cancelBookingThroughAPI(auth, bookingID, cancellationReason);\n    } catch (err) {\n        setError('Error while cancelling booking.');\n        return;\n    }\n}\n\nfunction setError(message) {\n    $log(message);\n    context.data.error = {\n        success: false,\n        message: message,\n    }\n}\n\nasync function getOAuthToken() {\n    let agent = new https.Agent({\n        maxSockets: 2,\n        rejectUnauthorized: false,\n    });\n    try {\n        let bodyJson = {\n            \"grant_type\": \"password\",\n            \"username\": \"CCU|S1S1S1\",\n            \"password\": \"Password\",\n            \"scope\": \"full\"\n        };\n        let clientId = \"ccoutpatients\";\n        let secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\n        \n        let d = await fetch(url, {\n            method: \"POST\",\n            headers: { 'Content-Type': 'application/json',\n            \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\n            },\n            agent:agent,\n            body: JSON.stringify(bodyJson)\n        })\n\n        let auth = await d.json();\n        return auth;\n    }\n    catch(err){\n        return false;\n    }\n}\n\nasync function cancelBookingThroughAPI(auth, bookingID, cancellationReason) {\n    let url = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/Bookings/${bookingID}?cancellationReason=${cancellationReason}`;\n\n    let a = await fetch(url, {\n        method: \"DELETE\",\n        headers: {\n            'Content-Type': 'application/json',\n            \"Authorization\": auth.token_type + \" \" + auth.access_token,\n        }                  \n    });\n    context.data.success = true;\n};\n\ncontext.data.success = false;\ncontext.data.done = true;\nawait cancelBooking();"
+        }
+      },
+      {
+        "id": "node1676144293614",
+        "x": 1081,
+        "y": 98,
+        "width": 100,
+        "height": 40,
+        "clazz": "endEvent",
+        "label": "End Event",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1676149463630",
+        "x": 109,
+        "y": 133,
+        "width": 146.8671875,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "logIntoSalesForce",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try {\n    context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n    const username = \"sebastian@tangle.io.partialdev\";\n    const securityToken = \"zXo1sdkg4BiWZnsCQf40n0TL\";\n    const password = \"Moorfield$test123456\" + securityToken;\n\n    let login =  await context.conn.login(username, password)\n\n    context.login = login \n\n} catch(err) {\n    $log('invalid sf login get appts')\n    $log(err)\n}"
+        }
+      },
+      {
+        "id": "node1676149519060",
+        "x": 788,
+        "y": 133,
+        "width": 145.1796875,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "updateSalesforce",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try {\n    let updateConversion = await context.conn.sobject(\"Conversion__c\").update({\n        Id: context.payload.conversionID,\n        Booking_ID__c: null,\n        Booking_ID__c: null,\n    });\n} catch (err) {\n    $log('Error updating conversion in single appt booking')\n    $log(err.message)\n    console.error(err)\n}\n\n\n"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1676144158264-right",
+        "target": "node1676149463630",
+        "endSocket": "left",
+        "id": "line-1676149506711",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "logIntoSalesForce",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676149463630-right",
+        "target": "node1676144274395",
+        "endSocket": "left",
+        "id": "line-1676149510920",
+        "instance": {},
+        "label": "logIntoSalesForce",
+        "targetLabel": "cancelAppointment",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676144274395-right",
+        "target": "node1676149519060",
+        "endSocket": "left",
+        "id": "line-1676149547228",
+        "instance": {},
+        "label": "cancelAppointment",
+        "targetLabel": "updateSalesforce",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676149519060-right",
+        "target": "node1676144293614",
+        "endSocket": "left",
+        "id": "line-1676149549844",
+        "instance": {},
+        "label": "updateSalesforce",
+        "targetLabel": "End Event",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "cancelAppointment"
+}

@@ -1,0 +1,18 @@
+.labels{
+    font-size: 0.6em;
+    margin-bottom: 0;
+    margin-right: 2px;
+}
+
+.descriptionElement{
+    font-size: 0.6em;
+}
+
+.controlElement{
+    font-size: 0.7em;
+}
+
+.form-control-label{
+     font-size: 0.6em;
+     margin-bottom: 0;
+}

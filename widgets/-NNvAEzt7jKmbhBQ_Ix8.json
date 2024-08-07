@@ -1,0 +1,14 @@
+{
+  "gsOptions": {
+    "h": 6,
+    "w": 12,
+    "x": 3,
+    "y": 0
+  },
+  "hidden": true,
+  "layout": "b-card",
+  "offSet": 0,
+  "perPage": 2,
+  "tab": "-NNv9Y_9W-muqB8CAqQ9",
+  "template": "<div class=\"row\">\n    <form @submit.prevent=\"getAppointmentsForCancelling()\">\n        <button type=\"submit\" class=\"btn btn-primary\">Get Appointments</button>\n    </form>\n</div>"
+}

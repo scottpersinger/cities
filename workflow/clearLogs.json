@@ -1,0 +1,93 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1699452484838",
+        "x": "395",
+        "y": "235",
+        "width": 103.7734375,
+        "height": 40,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1699452486604",
+        "x": "543",
+        "y": "423",
+        "width": 102.3671875,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "Clear Logs",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "try {\n    await admin.database().ref('dashboards/-N9Vi79H_1vQp1jXrJEc/models/workflowLogs').remove()\n} catch (err) {\n    console.error(err)\n    $log(err.message)\n    $log('Something went wrong clearing the logs')\n}"
+        }
+      },
+      {
+        "id": "node1699452489608",
+        "x": "842",
+        "y": "337",
+        "width": 100.00006103515625,
+        "height": 40,
+        "clazz": "endEvent",
+        "label": "End Event",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1699452484838-right",
+        "target": "node1699452486604",
+        "endSocket": "bottom",
+        "id": "line-1699452491482",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1699452486604-right",
+        "target": "node1699452489608",
+        "endSocket": "left",
+        "id": "line-1699452493335",
+        "instance": {},
+        "label": "Script Task",
+        "targetLabel": "End Event",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "clearLogs",
+  "scheduled": true
+}

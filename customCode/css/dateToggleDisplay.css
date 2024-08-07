@@ -1,0 +1,32 @@
+.dateButton{
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 8px;
+    width: 95px;
+    padding: 3px 0;
+}
+
+.dateButton .badge:not(:first-child){
+    margin-left: 0.1rem !important;
+}
+
+.dateBadge{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 9px !important;
+    padding: 6px !important;
+    margin-left: 5px;
+}
+
+#dateBadge span{
+    font-size: 10px;
+}
+
+.descriptionElement{
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+}

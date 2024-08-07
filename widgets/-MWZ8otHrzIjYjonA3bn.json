@@ -1,0 +1,21 @@
+{
+  "classes": "",
+  "columnCount": "1",
+  "dataSource": "patientData",
+  "detailTemplate": "<template>\n  <div>\n  </div>\n</template>",
+  "gsOptions": {
+    "h": 12,
+    "w": 24,
+    "x": 0,
+    "y": 1
+  },
+  "offSet": 0,
+  "overflow": "",
+  "perPage": 2,
+  "styles": "",
+  "tab": "-MWZ8_DuYJnzZJmuMYwf",
+  "template": "<div class=\"row\" style=\"height: 58px;\">\n  <div class=\"column col-2\">\n    <button class=\"btn btn-success btn-block\">-</button></div>\n  <div class=\"column col-3\">\n    <h5>{{row.firstName}} <br>{{row.surname}}</h5>\n  </div>\n  <div class=\"column col-4\">\n    <h5>{{row.home}}</h5>\n  </div>\n  <div class=\"column col-3\">\n    <h5>{{row.mobile}}</h5>\n  </div>\n\n</div>",
+  "title": "Patient Results",
+  "type": "card-list",
+  "widthType": "columnCount"
+}

@@ -1,0 +1,24 @@
+{
+  "am": [
+    "AM",
+    "PM"
+  ],
+  "conversionId": "a0A4L00000642kXUAQ",
+  "dateWeek": "2021-06-15",
+  "datesToShow": [
+    "2021-06-15",
+    "2021-06-16",
+    "2021-06-17",
+    "2021-06-21",
+    "2021-06-22"
+  ],
+  "locations": [
+    "Bedford",
+    "City Road",
+    "New Cavendish Street",
+    "Northwick Park",
+    "Purley",
+    "Richard Desmond Children's Eye Centre"
+  ],
+  "successfulBooking": false
+}

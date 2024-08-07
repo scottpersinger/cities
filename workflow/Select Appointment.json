@@ -1,0 +1,135 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": "appointmentData.status.status"
+    },
+    "nodes": [
+      {
+        "id": "node1616679278643",
+        "x": 110,
+        "y": 288,
+        "height": 40,
+        "width": 103.77342224121094,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1616679336330",
+        "x": 405,
+        "y": 190,
+        "height": 40,
+        "width": 100,
+        "clazz": "scriptTask",
+        "label": "login",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "context.conn = new jsforce.Connection({loginUrl :\"https://test.salesforce.com\"});\n    const username = \"sebastian@tangle.io.partialdev\";\n    const securityToken = \"CzFZMU9zZyhcPjetlk6lE4SL\";\n    const password = \"Moorfield$test12345\" + securityToken;\n\nlet login =  await context.conn.login(username, password)\n\ncontext.login = login \n"
+        },
+        "display": false
+      },
+      {
+        "id": "node1616679344196",
+        "x": 629,
+        "y": 196,
+        "height": 40,
+        "width": 176.03125,
+        "clazz": "scriptTask",
+        "label": "update the conversion",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": ""
+        },
+        "display": false
+      },
+      {
+        "id": "node1616685476392",
+        "x": 281,
+        "y": 279,
+        "height": 100,
+        "width": 165.40625,
+        "clazz": "userTask",
+        "label": "Confirm appointment",
+        "className": "user-task",
+        "icon": {
+          "name": "user",
+          "color": "hsl(235, 71%, 65%)"
+        },
+        "attachment": {
+          "user": "IExbYiRgRLdw4BMqAJyB9omEhov1"
+        },
+        "outcomes": [
+          {
+            "text": "Confirm",
+            "id": "outcome1616685492489",
+            "idx": 1
+          },
+          {
+            "text": "Cancel",
+            "id": "outcome1616685507344",
+            "idx": 2
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1616679278643-right",
+        "target": "node1616685476392",
+        "id": "line-1616685510355",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Confirm appointment",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "connector-outcome1616685492489",
+        "target": "node1616679336330",
+        "id": "line-1616685558760",
+        "instance": {},
+        "label": "Confirm",
+        "targetLabel": "login",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      },
+      {
+        "source": "connector-outcome1616685507344",
+        "target": "node1616679344196",
+        "id": "line-1616685561530",
+        "instance": {},
+        "label": "Cancel",
+        "targetLabel": "update the conversion",
+        "type": {
+          "startPlug": "behind",
+          "color": "hsla(219, 79%, 66%, 0.6)",
+          "size": 3,
+          "path": "magnet"
+        }
+      }
+    ]
+  },
+  "name": "Select Appointment"
+}

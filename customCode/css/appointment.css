@@ -1,0 +1,44 @@
+
+
+.data-grid__header{
+
+    display: none !important
+}
+
+.data-grid__tHeadTogglea{
+
+    display: none !important
+}
+
+.block-bottom{
+    display: none !important
+}
+
+.appNav {
+    display: none !important
+}
+
+.grid-stack-itema{
+
+    top: 30px !important;
+    padding:0px !important;
+    margin:0px !important;
+}
+
+.btn-success.btn-smaa, .btn-primary.btn-sm, .btn-danger, .data-grid__filterReset, .grid-stack-item__actionsBtn{
+    display: none !important
+}
+
+.d-flex{margin-top: -4px !important}
+
+.descriptionElement{
+    font-size: 10px;
+}
+
+.rounded-circle{
+    width: 95px !important;
+}
+
+.custom-toggle input:checked + .custom-toggle-slider:before{
+    transform: translateX(70px);
+}

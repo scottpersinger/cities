@@ -1,0 +1,92 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1676141500359",
+        "x": 131,
+        "y": 0,
+        "width": 103.77342224121094,
+        "height": 40.00000762939453,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1676141510111",
+        "x": 354,
+        "y": 0,
+        "width": 184.5859375,
+        "height": 40.00000762939453,
+        "clazz": "scriptTask",
+        "label": "getCancellationReasons",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "// Get compucare token\nlet url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\" \n\nconst timeout = i => new Promise(resolve => setTimeout(() => resolve(i), i));\nlet auth = null \nlet text = null \nlet token = null;\n\nasync function fetchReasons() {\n    let auth = await getOAuthToken();\n    \n    if(!auth) {\n        setError('Unable to log into compucare.');\n        return;\n    }\n\n    try {\n        context.data.reasons = [];\n        await getCancellationReasonsFromAPI(auth);\n    } catch (err) {\n        setError('Error while fetching reasons.');\n        return;\n    }\n}\n\nfunction setError(message) {\n    $log(message);\n    context.data.error = {\n        success: false,\n        message: message,\n    }\n}\n\nasync function getOAuthToken() {\n    let agent = new https.Agent({\n        maxSockets: 2,\n        rejectUnauthorized: false,\n    });\n    try {\n        let bodyJson = {\n            \"grant_type\": \"password\",\n            \"username\": \"CCU|S1S1S1\",\n            \"password\": \"Password\",\n            \"scope\": \"full\"\n        };\n        let clientId = \"ccoutpatients\";\n        let secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\n        \n        let d = await fetch(url, {\n            method: \"POST\",\n            headers: { 'Content-Type': 'application/json',\n            \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\n            },\n            agent:agent,\n            body: JSON.stringify(bodyJson)\n        })\n\n        let auth = await d.json();\n        return auth;\n    }\n    catch(err){\n        return false;\n    }\n}\n\nasync function getCancellationReasonsFromAPI(auth) {\n    let url = \"https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/CancellationReasons/Search?searchString=\";\n\n    let a = await fetch(url, {\n        method: \"GET\",\n        headers: {\n            'Content-Type': 'application/json',\n            \"Authorization\": auth.token_type + \" \" + auth.access_token,\n        }                  \n    })\n    let reasons = await a.json();\n    if(reasons.length > 0){\n        context.data.reasons.push(...reasons)\n    }\n\n};\n\nawait fetchReasons();\ncontext.data.done = true;"
+        }
+      },
+      {
+        "id": "node1676141520295",
+        "x": 684,
+        "y": 0,
+        "width": 100,
+        "height": 40.00000762939453,
+        "clazz": "endEvent",
+        "label": "End Event",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1676141500359-right",
+        "target": "node1676141510111",
+        "endSocket": "left",
+        "id": "line-1676141516282",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676141510111-right",
+        "target": "node1676141520295",
+        "endSocket": "left",
+        "id": "line-1676141530047",
+        "instance": {},
+        "label": "Script Task",
+        "targetLabel": "End Event",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "getCancellationReasons"
+}

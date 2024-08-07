@@ -1,0 +1,35 @@
+{
+  "am": [
+    "AM",
+    "PM"
+  ],
+  "bookingDateTime": "2021-06-23T14:15:00",
+  "bookingID": 600158,
+  "clinicid": "34",
+  "consultant": "Alexander Ionides",
+  "conversionId": "a0A4L00000642kXUAQ",
+  "date": "2021-06-23",
+  "dateWeek": "2021-06-21",
+  "datesToShow": [
+    "2021-06-21",
+    "2021-06-22",
+    "2021-06-23",
+    "2021-06-24",
+    "2021-06-28"
+  ],
+  "duration": 15,
+  "lastName": "Ellen",
+  "location": "Moorfields Private Outpatient Centre",
+  "locations": [
+    "Bedford",
+    "City Road",
+    "New Cavendish Street",
+    "Northwick Park",
+    "Purley",
+    "Richard Desmond Children's Eye Centre",
+    "Moorfields Private Outpatient Centre"
+  ],
+  "solutionId": "a0H4L000001RMUGUA4",
+  "successfulBooking": false,
+  "time": "14:15"
+}

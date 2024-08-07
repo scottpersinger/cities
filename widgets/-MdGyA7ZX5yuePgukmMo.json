@@ -1,0 +1,18 @@
+{
+  "classes": "",
+  "detailTemplate": "",
+  "gsOptions": {
+    "h": 15,
+    "w": 24,
+    "x": 0,
+    "y": 0
+  },
+  "layout": "b-card",
+  "offSet": 0,
+  "overflow": "height:auto",
+  "perPage": 2,
+  "styles": "",
+  "tab": "-MWPZltjqNSSXj8nRL0y",
+  "template": "<div class=\"row\">\n  <div class=\"column col-lg-12 col-sm-12 col-12\">\n    <span>Conversion already has an appointment booked</span>\n  </div>\n  <div class=\"row\" v-if=\"globalModels.booking\">\n    <div class=\"column col-lg-4 col-sm-4 col-12\">\n      <h2>Booking Info</h2>\n    </div>\n    <div class=\"column col-12 col-lg-8 col-sm-8\">\n      <h3 style=\"font-size: 10px;\">Booking ID: {{ globalModels.booking.bookingID }}</h3>\n      <h3 style=\"font-size: 10px;\">Patient System Number: {{ globalModels.booking.Patient ? globalModels.booking.Patient.CaseNumber : 'n/a' }}</h3>\n      <h3 style=\"font-size: 10px;\">Patient Name: {{ globalModels.booking.Patient ? globalModels.booking.Patient.Fullname : 'n/a' }}</h3>\n      <h3 style=\"font-size: 10px;\">\n        Date: {{ moment(globalModels.booking.StartDate).format('DD/MM/YYYY') }}\n        Time: {{ globalModels.booking.Time }}</h3>\n    </div>\n  </div>\n  <div class=\"alert alert-danger col-12\" role=\"alert\" v-if=\"$userData('cancellationError').bind\">\n    {{ $userData('cancellationError') }}\n  </div>\n  <div class=\"column col-lg-12 col-sm-12 col-12\" v-if=\"$userData('isBookingCancellable').bind\">\n    <h2>Cancel Booking</h2>\n    <form @submit.prevent=\"cancelBooking\">\n      <label for=\"cancellationReasonSelect\" class=\"sr-only\">Reason</label>\n      <select id=\"cancellationReasonSelect\" class=\"form-control\" v-model=\"$userData('cancellationReason').bind\">\n        <option :value=\"null\">Select Reason</option>\n        <option v-for=\"(reason, index) in globalModels.cancellationReasons\" :key=\"'cancellationReason' + index\" :value=\"reason.Code\">{{ reason.Description }}</option>\n      </select>\n      <button class=\"btn btn-danger mt-3\" type=\"submit\" :disabled=\"!$userData('cancellationReason').bind\">Remove Compucare Appointment</button>\n    </form>\n  </div>\n  <div v-if=\"$userData('cancellationSuccess').bind\" class=\"col-12\">\n    <div class=\"alert alert-success\" role=\"alert\" v-if=\"$userData('cancellationSuccess').bind\">\n      Booking cancelled.\n    </div>\n  </div>\n  <div class=\"col-12\" v-if=\"$userData('loadingBookingData').bind\">\n    <Loading />\n  </div>\n</div>",
+  "title": ""
+}

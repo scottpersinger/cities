@@ -1,0 +1,92 @@
+{
+  "data": {
+    "metaData": {
+      "id": "",
+      "statusField": ""
+    },
+    "nodes": [
+      {
+        "id": "node1676037236156",
+        "x": 121,
+        "y": -8,
+        "width": 103.77342224121094,
+        "height": 40,
+        "clazz": "startEvent",
+        "label": "Start Event",
+        "className": "start-event",
+        "icon": {
+          "name": "flag",
+          "color": "hsl(154, 64%, 49%)"
+        },
+        "attachment": {}
+      },
+      {
+        "id": "node1676037248406",
+        "x": 432,
+        "y": 88,
+        "width": 150.890625,
+        "height": 40,
+        "clazz": "scriptTask",
+        "label": "Get Appointments",
+        "className": "script-task",
+        "icon": {
+          "name": "terminal",
+          "color": "hsl(218, 54%, 20%)"
+        },
+        "attachment": {
+          "script": "// Get compucare token\nlet url = \"https://compucareapps.moorfields.nhs.uk/AuthorisationServer/compucare/oauth/token\" \n\nconst timeout = i => new Promise(resolve => setTimeout(() => resolve(i), i));\nlet auth = null \nlet text = null \nlet token = null;\n\nasync function fetchAppointments() {\n    let auth = await getOAuthToken();\n    \n    if(!auth) {\n        setError('Unable to log into compucare.');\n        return;\n    }\n\n    context.data.appointments = [];\n    await getAppointmentsFromAPI(auth, '2023-02-10', '2023-02-16');\n}\n\nfunction setError(message) {\n    $log(message);\n    context.data.error = {\n        success: false,\n        message: message,\n    }\n}\n\nasync function getOAuthToken() {\n    let agent = new https.Agent({\n        maxSockets: 2,\n        rejectUnauthorized: false,\n    });\n    try {\n        let bodyJson = {\n            \"grant_type\": \"password\",\n            \"username\": \"CCU|S1S1S1\",\n            \"password\": \"Password\",\n            \"scope\": \"full\"\n        };\n        let clientId = \"ccoutpatients\";\n        let secret = \"R4fpFrm5V2y9Y71R6wkscKUaAi0O1s6jX2YhJF7GKs\";\n        \n        let d = await fetch(url, {\n            method: \"POST\",\n            headers: { 'Content-Type': 'application/json',\n            \"Authorization\": \"Basic \" + btoa(clientId + \":\" + secret)\n            },\n            agent:agent,\n            body: JSON.stringify(bodyJson)\n        })\n\n        let auth = await d.json();\n        return auth;\n    }\n    catch(err){\n        return false;\n    }\n}\n\nasync function getAppointmentsFromAPI(auth, fromDate, toDate) {\n    let url = `https://compucareapps.moorfields.nhs.uk/Compucare7API/api/op/BookingSearch?fromDate=${fromDate}&toDate=${toDate}&clinicId=131&consultantId=`    \n\n    let a = await fetch(url, {method: \"GET\",\n        headers: { 'Content-Type': 'application/json',\n        \"Authorization\": auth.token_type + \" \" + auth.access_token\n        }                   \n    })\n\n    let appts = await a.json();\n\n    context.data.response = appts;\n\n    if(appts.length > 0){\n        context.data.appointments.push(...appts)\n    }   \n\n};\n\nawait fetchAppointments();\ncontext.data.done = true;"
+        }
+      },
+      {
+        "id": "node1676041874138",
+        "x": 752,
+        "y": 88,
+        "width": 100,
+        "height": 40,
+        "clazz": "endEvent",
+        "label": "End Event",
+        "className": "end-event",
+        "icon": {
+          "name": "stop-circle",
+          "color": "hsl(348, 91%, 59%)"
+        },
+        "attachment": {}
+      }
+    ],
+    "edges": [
+      {
+        "source": "node1676037236156-right",
+        "target": "node1676037248406",
+        "endSocket": "left",
+        "id": "line-1676037260787",
+        "instance": {},
+        "label": "Start Event",
+        "targetLabel": "Script Task",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      },
+      {
+        "source": "node1676037248406-right",
+        "target": "node1676041874138",
+        "endSocket": "left",
+        "id": "line-1676041882214",
+        "instance": {},
+        "label": "Get Appointments",
+        "targetLabel": "End Event",
+        "type": {
+          "startPlug": "behind",
+          "color": "#5e73e4",
+          "size": 2,
+          "path": "grid",
+          "dash": null
+        }
+      }
+    ]
+  },
+  "name": "getAppointmentsForCancellations"
+}

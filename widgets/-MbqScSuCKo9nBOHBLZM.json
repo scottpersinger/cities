@@ -1,0 +1,12 @@
+{
+  "gsOptions": {
+    "h": 6,
+    "w": 12
+  },
+  "hidden": true,
+  "layout": "b-card",
+  "offSet": 0,
+  "perPage": 2,
+  "tab": "-MbqScKwBpdx5aUBzbdI",
+  "template": "return function (){\n\n  let d = await this.$wfGetData('-MbqT2jovy1Se_uSN1Zc', payload)\n\n    console.log(d)\n\n}\n"
+}

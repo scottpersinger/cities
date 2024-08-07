@@ -1,0 +1,16 @@
+{
+  "dependency": "dataGrid/patientSilverlink",
+  "gsOptions": {
+    "h": 18,
+    "w": 24,
+    "x": 0,
+    "y": 0
+  },
+  "layout": "b-card",
+  "overflow": "height: auto",
+  "props": {
+    "gridId": "patientSilverlink"
+  },
+  "tab": "-MXaJglaBHyrW6lvy54G",
+  "type": "DataGrid"
+}
