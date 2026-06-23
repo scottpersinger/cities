@@ -1,16 +1,15 @@
 {
-  "name": "desktop-codespace",
+  "name": "xfce-desktop-codespace",
   "build": { "dockerfile": "Dockerfile" },
-  "features": {
-    "ghcr.io/devcontainers/features/desktop-lite:1": {
-      "password": "vscode",   // or "noPassword" for passwordless local connections
-      "webPort": "6080",
-      "vncPort": "5901"
-    }
-  },
   "forwardPorts": [6080, 5901],
   "portsAttributes": {
-    "6080": { "label": "desktop (noVNC)" },
+    "6080": { "label": "desktop (noVNC)", "onAutoForward": "notify" },
     "5901": { "label": "desktop (VNC)" }
-  }
+  },
+  "containerEnv": {
+    "DISPLAY": ":1",
+    "BROWSER": "/usr/local/bin/google-chrome"
+  },
+  "postStartCommand": "bash /usr/local/bin/start-desktop.sh",
+  "remoteUser": "vscode"
 }
