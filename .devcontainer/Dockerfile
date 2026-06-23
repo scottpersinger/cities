@@ -32,6 +32,15 @@ RUN printf '%s\n' '#!/bin/sh' \
  && update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/local/bin/google-chrome 200 \
  && update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/local/bin/google-chrome 200
 
+# Make `claude` open its auth/login links in the local XFCE desktop Chrome.
+# VS Code overrides $BROWSER in its integrated terminal with its own helper
+# (which opens links on the *client* machine, breaking the localhost callback),
+# so we set BROWSER inline only for claude, at invocation time, via a wrapper.
+RUN printf '%s\n' '' \
+      '# Open Claude Code auth links in the local desktop Chrome' \
+      'claude() { BROWSER=/usr/local/bin/google-chrome command claude "$@"; }' \
+      >> /home/vscode/.bashrc
+
 # Desktop launcher script (starts VNC + noVNC); invoked from postStartCommand.
 COPY start-desktop.sh /usr/local/bin/start-desktop.sh
 RUN chmod +x /usr/local/bin/start-desktop.sh
