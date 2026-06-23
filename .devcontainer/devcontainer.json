@@ -1,6 +1,9 @@
 {
   "name": "xfce-desktop-codespace",
   "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {}
+  },
   "forwardPorts": [6080, 5901],
   "portsAttributes": {
     "6080": { "label": "desktop (noVNC)", "onAutoForward": "openPreview" },
@@ -10,6 +13,7 @@
     "DISPLAY": ":1",
     "BROWSER": "/usr/local/bin/google-chrome"
   },
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
   "postStartCommand": "bash /usr/local/bin/start-desktop.sh",
   "remoteUser": "vscode"
 }
