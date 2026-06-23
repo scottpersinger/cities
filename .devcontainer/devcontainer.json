@@ -12,8 +12,5 @@
   "portsAttributes": {
     "6080": { "label": "desktop (noVNC)" },
     "5901": { "label": "desktop (VNC)" }
-  },
-  // Required so the desktop init/entrypoint runs properly
-  "runArgs": ["--init"],
-  "overrideCommand": false
+  }
 }
