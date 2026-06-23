@@ -1,0 +1,19 @@
+{
+  "name": "desktop-codespace",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/desktop-lite:1": {
+      "password": "vscode",   // or "noPassword" for passwordless local connections
+      "webPort": "6080",
+      "vncPort": "5901"
+    }
+  },
+  "forwardPorts": [6080, 5901],
+  "portsAttributes": {
+    "6080": { "label": "desktop (noVNC)" },
+    "5901": { "label": "desktop (VNC)" }
+  },
+  // Required so the desktop init/entrypoint runs properly
+  "runArgs": ["--init"],
+  "overrideCommand": false
+}
