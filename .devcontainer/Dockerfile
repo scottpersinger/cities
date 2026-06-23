@@ -13,7 +13,7 @@ RUN apt-get update \
  && curl -sSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" -o /tmp/chrome.deb \
  && apt-get install -y /tmp/chrome.deb \
  && rm -f /tmp/chrome.deb \
- && ln -sf /usr/share/novnc/vnc.html /usr/share/novnc/index.html \
+ && printf '%s' '<!doctype html><meta http-equiv="refresh" content="0; url=vnc.html?autoconnect=true&resize=remote">' > /usr/share/novnc/index.html \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Chrome needs container-friendly flags inside the VNC desktop:

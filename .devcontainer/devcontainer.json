@@ -3,7 +3,7 @@
   "build": { "dockerfile": "Dockerfile" },
   "forwardPorts": [6080, 5901],
   "portsAttributes": {
-    "6080": { "label": "desktop (noVNC)", "onAutoForward": "notify" },
+    "6080": { "label": "desktop (noVNC)", "onAutoForward": "openPreview" },
     "5901": { "label": "desktop (VNC)" }
   },
   "containerEnv": {
