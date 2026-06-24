@@ -46,24 +46,49 @@ network:
     require_ssl: false
 EOF
 
-if listening "$WEB_PORT"; then
-  log "desktop already serving on $WEB_PORT; leaving it"
-else
-  log "starting KasmVNC on $VNC_DISPLAY (web $WEB_PORT)"
+# Launch KasmVNC once.
+#   -select-de XFCE generates the xstartup non-interactively (otherwise KasmVNC
+#   prompts for the desktop environment and blocks). -disableBasicAuth: the
+#   forwarded port is private/GitHub-auth gated, so no extra password. stdin
+#   from /dev/null guards against any prompt blocking the lifecycle step.
+#   -WebpEncodingTime 0 disables WebP (forces JPEG): KasmVNC's WebP frames can
+#   fail to decode in the browser ("Failed to decode frame at index 0"); JPEG
+#   is reliable.
+launch_vnc() {
   vncserver -kill "$VNC_DISPLAY" >/dev/null 2>&1 || true
   rm -f "/tmp/.X${VNC_DISPLAY#:}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY#:}" 2>/dev/null || true
-  # -select-de XFCE generates the xstartup non-interactively (otherwise KasmVNC
-  # prompts for the desktop environment and blocks). -disableBasicAuth: the
-  # forwarded port is private/GitHub-auth gated, so no extra password. stdin
-  # from /dev/null guards against any prompt blocking the lifecycle step.
-  # -WebpEncodingTime 0 disables WebP (forces JPEG): KasmVNC's WebP frames can
-  # fail to decode in the browser ("Failed to decode frame at index 0"); JPEG
-  # is reliable. -disableBasicAuth: forwarded port is private/GitHub-auth gated.
   vncserver "$VNC_DISPLAY" -select-de XFCE \
     -geometry "$VNC_GEOMETRY" -depth "$VNC_DEPTH" \
     -websocketPort "$WEB_PORT" -disableBasicAuth -WebpEncodingTime 0 \
     </dev/null >/tmp/kasmvnc.log 2>&1 || log "vncserver exited $?"
-fi
+}
 
-log "ready -> KasmVNC web on :${WEB_PORT}"
+# Bring the web port up, verifying it actually binds. The vncserver wrapper
+# reports success even when Xvnc then dies — and at boot the Codespaces port
+# agent can transiently hold 6080, so the first Xvnc fails with EADDRINUSE
+# ("Address already in use") and exits. So we don't trust the wrapper: we check
+# that something is really listening, and retry until it is (the transient
+# occupant releases within a few seconds).
+for attempt in 1 2 3 4 5; do
+  if listening "$WEB_PORT"; then
+    log "desktop serving on $WEB_PORT"
+    break
+  fi
+  log "starting KasmVNC on $VNC_DISPLAY (web $WEB_PORT), attempt $attempt"
+  launch_vnc
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    listening "$WEB_PORT" && break
+    sleep 1
+  done
+  if listening "$WEB_PORT"; then
+    log "desktop serving on $WEB_PORT"
+    break
+  fi
+  log "not serving after attempt $attempt (likely EADDRINUSE); retrying"
+  sleep 2
+done
+
+listening "$WEB_PORT" \
+  && log "ready -> KasmVNC web on :${WEB_PORT}" \
+  || log "ERROR: desktop never bound :${WEB_PORT} after retries"
 exit 0
