@@ -41,9 +41,12 @@ else
   # prompts for the desktop environment and blocks). -disableBasicAuth: the
   # forwarded port is private/GitHub-auth gated, so no extra password. stdin
   # from /dev/null guards against any prompt blocking the lifecycle step.
+  # -WebpEncodingTime 0 disables WebP (forces JPEG): KasmVNC's WebP frames can
+  # fail to decode in the browser ("Failed to decode frame at index 0"); JPEG
+  # is reliable. -disableBasicAuth: forwarded port is private/GitHub-auth gated.
   vncserver "$VNC_DISPLAY" -select-de XFCE \
     -geometry "$VNC_GEOMETRY" -depth "$VNC_DEPTH" \
-    -websocketPort "$WEB_PORT" -disableBasicAuth \
+    -websocketPort "$WEB_PORT" -disableBasicAuth -WebpEncodingTime 0 \
     </dev/null >/tmp/kasmvnc.log 2>&1 || log "vncserver exited $?"
 fi
 
