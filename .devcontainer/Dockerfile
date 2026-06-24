@@ -4,20 +4,31 @@ ENV DEBIAN_FRONTEND=noninteractive
 # UTF-8 so terminal TUIs (e.g. Claude Code) render box-drawing/emoji correctly.
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 
-# XFCE desktop + TigerVNC + noVNC, Google Chrome, and helpers.
+# XFCE desktop, Google Chrome, fonts, and build tooling.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       xfce4 xfce4-terminal xfce4-goodies \
       dbus-x11 x11-utils x11-xserver-utils xfonts-base \
       fonts-dejavu-core fonts-noto-core fonts-noto-color-emoji fonts-powerline \
-      tigervnc-standalone-server tigervnc-common \
-      novnc websockify \
       xdg-utils curl ca-certificates \
       build-essential pkg-config git unzip zip jq \
  && curl -sSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" -o /tmp/chrome.deb \
  && apt-get install -y /tmp/chrome.deb \
  && rm -f /tmp/chrome.deb \
- && printf '%s' '<!doctype html><meta http-equiv="refresh" content="0; url=vnc.html?autoconnect=true&resize=remote">' > /usr/share/novnc/index.html \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# KasmVNC: modern VNC server with a built-in web client (no noVNC/websockify),
+# better image quality, and seamless bidirectional clipboard on Chromium
+# browsers. The .deb is per-Ubuntu-codename, so resolve it from /etc/os-release.
+ARG KASMVNC_VERSION=1.4.0
+RUN . /etc/os-release \
+ && arch="$(dpkg --print-architecture)" \
+ && curl -fsSL -o /tmp/kasmvnc.deb \
+      "https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_${VERSION_CODENAME}_${KASMVNC_VERSION}_${arch}.deb" \
+ && apt-get update \
+ && apt-get install -y /tmp/kasmvnc.deb \
+ && rm -f /tmp/kasmvnc.deb \
+ && adduser vscode ssl-cert \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Chrome needs container-friendly flags inside the VNC desktop:
@@ -45,6 +56,6 @@ RUN printf '%s\n' '' \
       'claude() { BROWSER=/usr/local/bin/google-chrome command claude "$@"; }' \
       >> /home/vscode/.bashrc
 
-# Desktop launcher script (starts VNC + noVNC); invoked from postStartCommand.
+# Desktop launcher script (starts KasmVNC + XFCE); invoked from postStartCommand.
 COPY start-desktop.sh /usr/local/bin/start-desktop.sh
 RUN chmod +x /usr/local/bin/start-desktop.sh

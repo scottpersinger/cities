@@ -6,8 +6,10 @@ codespace from it, then the agent clones and runs **any** GitHub repo inside it.
 
 ## What you get
 
-- **XFCE desktop in the browser** via TigerVNC + noVNC (port `6080`, auto-connects,
-  no password — the forwarded port is private/GitHub-auth gated).
+- **XFCE desktop in the browser** via **KasmVNC** (port `6080`, auto-connects,
+  no password — the forwarded port is private/GitHub-auth gated). KasmVNC's web
+  client does **seamless clipboard** (real Ctrl+C/Ctrl+V between your machine and
+  the desktop) — use a **Chromium-based browser** (Chrome/Edge) for it to work.
 - **Google Chrome**, pre-flagged for containers (`--no-sandbox --disable-gpu
   --disable-dev-shm-usage`) and set as the default browser.
 - **Node** (LTS) and **Python 3.12**, plus `build-essential`, `git`, `gh`,
@@ -43,8 +45,8 @@ Launch apps from **Applications** (Chrome is under *Internet*).
 ```
 .devcontainer/
   devcontainer.json   # features (node, python), ports, lifecycle, env
-  Dockerfile          # XFCE + VNC + noVNC + Chrome + build tools
-  start-desktop.sh    # idempotent VNC/noVNC launcher (postStartCommand)
+  Dockerfile          # XFCE + KasmVNC + Chrome + fonts + build tools
+  start-desktop.sh    # idempotent KasmVNC launcher (postStartCommand)
 ```
 
 ## Notes / gotchas

@@ -7,8 +7,8 @@
   },
   "forwardPorts": [6080, 5901],
   "portsAttributes": {
-    "6080": { "label": "desktop (noVNC)", "onAutoForward": "openPreview" },
-    "5901": { "label": "desktop (VNC)" }
+    "6080": { "label": "desktop (KasmVNC)", "onAutoForward": "openPreview" },
+    "5901": { "label": "desktop (VNC raw)" }
   },
   "containerEnv": {
     "DISPLAY": ":1",

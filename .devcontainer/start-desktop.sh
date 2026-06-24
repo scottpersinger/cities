@@ -1,34 +1,38 @@
 #!/usr/bin/env bash
-# Bring up an XFCE session on TigerVNC (display :1 / port 5901) and expose it
-# over the browser via noVNC (port 6080).
+# Bring up an XFCE session on KasmVNC. KasmVNC serves its own web client (with
+# seamless clipboard) directly on the websocket port — no noVNC/websockify.
 #
-# Designed to run from postStartCommand on every container start/resume:
-#   - idempotent: if VNC/noVNC are already listening, it leaves them alone
-#     (so a resume keeps your running desktop session);
-#   - detached: background processes survive after this script returns;
-#   - never fails: always exits 0 so the lifecycle step can't be marked failed
-#     (a failed postStartCommand is itself a reason background procs get reaped).
+# Runs from postStartCommand on every start/resume:
+#   - idempotent: if the web port is already serving, leave it alone;
+#   - never fails: always exits 0 so the lifecycle step can't be marked failed.
 set -uo pipefail
 
 VNC_DISPLAY=":1"
-VNC_PORT="5901"
-NOVNC_PORT="6080"
+WEB_PORT="6080"
 VNC_GEOMETRY="${VNC_GEOMETRY:-1440x900}"
 VNC_DEPTH="${VNC_DEPTH:-24}"
 
 log() { echo "[start-desktop] $*"; }
 listening() { ss -ltn 2>/dev/null | grep -q ":$1 "; }
 
-VNCSERVER="$(command -v tigervncserver || command -v vncserver || true)"
-if [ -z "$VNCSERVER" ]; then
-  log "ERROR: tigervncserver not found; skipping desktop start"
+if ! command -v vncserver >/dev/null 2>&1; then
+  log "ERROR: KasmVNC vncserver not found; skipping desktop start"
   exit 0
 fi
 
 mkdir -p "$HOME/.vnc"
 
-# XFCE session startup (used by TigerVNC versions that honor ~/.vnc/xstartup;
-# newer builds use /etc/X11/Xtigervnc-session, which also launches XFCE).
+# Serve the web client over plain HTTP on $WEB_PORT (the Codespaces proxy adds
+# TLS); disabling SSL avoids TLS-in-TLS through the forwarded port.
+cat > "$HOME/.vnc/kasmvnc.yaml" <<EOF
+network:
+  protocol: http
+  websocket_port: ${WEB_PORT}
+  ssl:
+    require: false
+EOF
+
+# XFCE session.
 cat > "$HOME/.vnc/xstartup" <<'EOF'
 #!/bin/sh
 unset SESSION_MANAGER DBUS_SESSION_BUS_ADDRESS
@@ -39,36 +43,23 @@ exec dbus-launch --exit-with-session startxfce4
 EOF
 chmod +x "$HOME/.vnc/xstartup"
 
-# Start the VNC server only if nothing already serves :1.
-# No password: the forwarded port is private (GitHub-auth gated) and the server
-# only listens on localhost (-localhost yes), reached via noVNC; that also lets
-# -SecurityTypes None be used without TigerVNC's no-auth refusal.
-if listening "$VNC_PORT"; then
-  log "VNC already listening on $VNC_PORT; leaving it"
+# KasmVNC wants a password file to exist even though we disable basic auth on
+# the (private, GitHub-auth-gated) forwarded port. Create one once.
+if [ ! -f "$HOME/.kasmpasswd" ]; then
+  printf 'vscode\nvscode\n' | vncpasswd -u kasm_user -w >/dev/null 2>&1 \
+    || log "vncpasswd setup failed (continuing)"
+fi
+
+if listening "$WEB_PORT"; then
+  log "desktop already serving on $WEB_PORT; leaving it"
 else
-  log "starting VNC on $VNC_DISPLAY"
-  "$VNCSERVER" -kill "$VNC_DISPLAY" >/dev/null 2>&1 || true
+  log "starting KasmVNC on $VNC_DISPLAY (web $WEB_PORT)"
+  vncserver -kill "$VNC_DISPLAY" >/dev/null 2>&1 || true
   rm -f "/tmp/.X${VNC_DISPLAY#:}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY#:}" 2>/dev/null || true
-  "$VNCSERVER" "$VNC_DISPLAY" -geometry "$VNC_GEOMETRY" -depth "$VNC_DEPTH" \
-    -localhost yes -SecurityTypes None >/tmp/vnc.log 2>&1 || log "vncserver exited $?"
+  vncserver "$VNC_DISPLAY" -geometry "$VNC_GEOMETRY" -depth "$VNC_DEPTH" \
+    -websocketPort "$WEB_PORT" -disableBasicAuth \
+    >/tmp/kasmvnc.log 2>&1 || log "vncserver exited $?"
 fi
 
-# Start noVNC only if nothing already serves 6080. Run websockify under a small
-# respawn supervisor (it has been observed to exit unexpectedly), fully detached
-# (setsid + closed stdin) so it outlives this postStartCommand invocation.
-if listening "$NOVNC_PORT"; then
-  log "noVNC already listening on $NOVNC_PORT; leaving it"
-else
-  log "starting noVNC on $NOVNC_PORT (auto-respawn)"
-  setsid env NOVNC_PORT="$NOVNC_PORT" VNC_PORT="$VNC_PORT" bash -c '
-    while true; do
-      websockify --web=/usr/share/novnc "$NOVNC_PORT" "localhost:$VNC_PORT" >>/tmp/novnc.log 2>&1
-      echo "[start-desktop] websockify exited $? at $(date -u +%FT%TZ); respawning in 2s" >>/tmp/novnc.log
-      sleep 2
-    done
-  ' </dev/null >>/tmp/novnc.log 2>&1 &
-  disown 2>/dev/null || true
-fi
-
-log "ready -> noVNC on :${NOVNC_PORT} (no password)"
+log "ready -> KasmVNC web on :${WEB_PORT}"
 exit 0
