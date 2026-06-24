@@ -53,14 +53,20 @@ else
     -localhost yes -SecurityTypes None >/tmp/vnc.log 2>&1 || log "vncserver exited $?"
 fi
 
-# Start noVNC only if nothing already serves 6080. Fully detach it (setsid +
-# nohup + closed stdin) so it outlives this postStartCommand invocation.
+# Start noVNC only if nothing already serves 6080. Run websockify under a small
+# respawn supervisor (it has been observed to exit unexpectedly), fully detached
+# (setsid + closed stdin) so it outlives this postStartCommand invocation.
 if listening "$NOVNC_PORT"; then
   log "noVNC already listening on $NOVNC_PORT; leaving it"
 else
-  log "starting noVNC on $NOVNC_PORT"
-  setsid nohup websockify --web=/usr/share/novnc "$NOVNC_PORT" "localhost:${VNC_PORT}" \
-    >/tmp/novnc.log 2>&1 </dev/null &
+  log "starting noVNC on $NOVNC_PORT (auto-respawn)"
+  setsid env NOVNC_PORT="$NOVNC_PORT" VNC_PORT="$VNC_PORT" bash -c '
+    while true; do
+      websockify --web=/usr/share/novnc "$NOVNC_PORT" "localhost:$VNC_PORT" >>/tmp/novnc.log 2>&1
+      echo "[start-desktop] websockify exited $? at $(date -u +%FT%TZ); respawning in 2s" >>/tmp/novnc.log
+      sleep 2
+    done
+  ' </dev/null >>/tmp/novnc.log 2>&1 &
   disown 2>/dev/null || true
 fi
 
