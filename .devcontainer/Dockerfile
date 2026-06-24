@@ -10,6 +10,7 @@ RUN apt-get update \
       tigervnc-standalone-server tigervnc-common \
       novnc websockify \
       xdg-utils curl ca-certificates \
+      build-essential pkg-config git unzip zip jq \
  && curl -sSL "https://dl.google.com/linux/direct/google-chrome-stable_current_$(dpkg --print-architecture).deb" -o /tmp/chrome.deb \
  && apt-get install -y /tmp/chrome.deb \
  && rm -f /tmp/chrome.deb \

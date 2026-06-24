@@ -1,8 +1,9 @@
 {
-  "name": "xfce-desktop-codespace",
+  "name": "agent-dev-desktop",
   "build": { "dockerfile": "Dockerfile" },
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
   },
   "forwardPorts": [6080, 5901],
   "portsAttributes": {
@@ -13,7 +14,7 @@
     "DISPLAY": ":1",
     "BROWSER": "/usr/local/bin/google-chrome"
   },
-  "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && mkdir -p $HOME/projects",
   "postStartCommand": "bash /usr/local/bin/start-desktop.sh",
   "remoteUser": "vscode"
 }
