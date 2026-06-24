@@ -1,12 +1,15 @@
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 
 ENV DEBIAN_FRONTEND=noninteractive
+# UTF-8 so terminal TUIs (e.g. Claude Code) render box-drawing/emoji correctly.
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 
 # XFCE desktop + TigerVNC + noVNC, Google Chrome, and helpers.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       xfce4 xfce4-terminal xfce4-goodies \
       dbus-x11 x11-utils x11-xserver-utils xfonts-base \
+      fonts-dejavu-core fonts-noto-core fonts-noto-color-emoji fonts-powerline \
       tigervnc-standalone-server tigervnc-common \
       novnc websockify \
       xdg-utils curl ca-certificates \
