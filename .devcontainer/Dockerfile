@@ -1,4 +1,7 @@
-FROM mcr.microsoft.com/devcontainers/base:ubuntu
+# Pinned to a stable LTS (24.04 "noble"). The rolling `:ubuntu` tag moved to
+# 26.04 "resolute", which broke package availability (e.g. KasmVNC has no
+# resolute build) and shipped Python 3.14. Pinning keeps the env reproducible.
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 # UTF-8 so terminal TUIs (e.g. Claude Code) render box-drawing/emoji correctly.
