@@ -40,6 +40,29 @@ run `devcontainer up` against the clone.)
 Open the forwarded **`6080`** port in the browser. It auto-connects to XFCE.
 Launch apps from **Applications** (Chrome is under *Internet*).
 
+## Clipboard
+
+KasmVNC syncs the clipboard with your local machine (use a Chromium browser).
+Paste is **Ctrl+V** in both Chrome and the terminal (xfce4-terminal is rebound
+so Ctrl+V pastes). Copy is Ctrl+C in apps, **Ctrl+Shift+C** in the terminal
+(Ctrl+C there is still SIGINT). Bidirectional sync can occasionally lag — for a
+short value, typing it is faster than fighting the clipboard.
+
+## Claude Code credentials (avoid the login dance)
+
+Interactive `claude` login means copy-pasting a code into the desktop, which is
+fiddly. For a clean first run, inject credentials via a **Codespaces secret** so
+Claude Code is authenticated automatically (Repo/Account → Settings → Codespaces
+→ Secrets):
+
+- `CLAUDE_CODE_OAUTH_TOKEN` — uses your Claude subscription. Generate once on a
+  machine where you're logged in: `claude setup-token`, then paste the token as
+  the secret value.
+- or `ANTHROPIC_API_KEY` — uses API billing.
+
+Codespaces injects secrets as env vars, and Claude Code picks them up with no
+login flow or clipboard needed.
+
 ## Layout
 
 ```

@@ -59,6 +59,13 @@ RUN printf '%s\n' '' \
       'claude() { BROWSER=/usr/local/bin/google-chrome command claude "$@"; }' \
       >> /home/vscode/.bashrc
 
+# Make xfce4-terminal paste on Ctrl+V (default is Ctrl+Shift+V, which trips up
+# anyone pasting from their Mac). Copy stays Ctrl+Shift+C so Ctrl+C still = SIGINT.
+RUN mkdir -p /home/vscode/.config/xfce4/xfce4-terminal \
+ && printf '%s\n' '(gtk_accel_path "<Actions>/terminal-window/paste" "<Primary>v")' \
+      > /home/vscode/.config/xfce4/xfce4-terminal/accels.scm \
+ && chown -R vscode:vscode /home/vscode/.config
+
 # Desktop launcher script (starts KasmVNC + XFCE); invoked from postStartCommand.
 COPY start-desktop.sh /usr/local/bin/start-desktop.sh
 RUN chmod +x /usr/local/bin/start-desktop.sh
