@@ -5,10 +5,9 @@
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
   },
-  "forwardPorts": [6080, 5901],
+  "forwardPorts": [6080],
   "portsAttributes": {
-    "6080": { "label": "desktop (KasmVNC)", "onAutoForward": "openPreview" },
-    "5901": { "label": "desktop (VNC raw)" }
+    "6080": { "label": "desktop (KasmVNC)", "onAutoForward": "openPreview" }
   },
   "containerEnv": {
     "DISPLAY": ":1",
