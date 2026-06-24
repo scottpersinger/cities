@@ -22,6 +22,21 @@ fi
 
 mkdir -p "$HOME/.vnc"
 
+# KasmVNC won't start non-interactively until a control user with write access
+# exists: otherwise `vncserver` prints "you need a KasmVNC user with write
+# permissions / [1] Create a new user [2] Start without one" and waits for a
+# selection. With stdin from /dev/null it reads an empty answer, loops forever
+# pegging a CPU at ~100%, and never binds the web port — so Connect just hangs.
+# Pre-seed that user. The password is unused at connect time (-disableBasicAuth
+# gates access behind the private GitHub-auth'd forwarded port) but kasmvncpasswd
+# still requires it to be at least 6 characters.
+if [ ! -s "$HOME/.kasmpasswd" ]; then
+  log "creating KasmVNC control user"
+  printf '%s\n%s\n' "kasmvnc123" "kasmvnc123" \
+    | kasmvncpasswd -u kasm_user -rwo "$HOME/.kasmpasswd" >/dev/null 2>&1 \
+    || log "WARNING: kasmvncpasswd failed; vncserver may prompt"
+fi
+
 # Serve the web client over plain HTTP on the websocket port (the Codespaces
 # proxy adds TLS); disabling SSL avoids TLS-in-TLS through the forwarded port.
 cat > "$HOME/.vnc/kasmvnc.yaml" <<EOF
