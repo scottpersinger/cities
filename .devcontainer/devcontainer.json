@@ -19,6 +19,11 @@
     "BROWSER": "/usr/local/bin/google-chrome"
   },
   "postCreateCommand": "npm install -g @anthropic-ai/claude-code && mkdir -p $HOME/projects",
-  "postStartCommand": "bash /usr/local/bin/start-desktop.sh",
+  // The desktop is intentionally NOT started here. A KasmVNC launched from a
+  // lifecycle command (postStart/postCreate) is reaped by Codespaces shortly
+  // after the command finishes, so it's reliably down by the time anyone
+  // connects. The Codespaces Manager app starts it on demand by running
+  // /usr/local/bin/start-desktop.sh over `gh codespace ssh` (an exec context
+  // that survives), which is where the desktop actually stays up.
   "remoteUser": "vscode"
 }
