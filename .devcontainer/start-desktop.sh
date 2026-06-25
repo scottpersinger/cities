@@ -15,6 +15,16 @@ VNC_DEPTH="${VNC_DEPTH:-24}"
 log() { echo "[start-desktop] $*"; }
 listening() { ss -ltn 2>/dev/null | grep -q ":$1 "; }
 
+# True only when *our* KasmVNC is actually up: the Xvnc process from the pidfile
+# is alive AND the web port is bound. Plain `listening` can be fooled by the
+# Codespaces port agent transiently holding 6080 at boot, which would make us
+# declare success while no desktop is really serving.
+vnc_serving() {
+  local pid
+  pid=$(cat "$HOME/.vnc/"*":${VNC_DISPLAY#:}.pid" 2>/dev/null | head -1)
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && listening "$WEB_PORT"
+}
+
 if ! command -v vncserver >/dev/null 2>&1; then
   log "ERROR: KasmVNC vncserver not found; skipping desktop start"
   exit 0
@@ -67,28 +77,33 @@ launch_vnc() {
 # reports success even when Xvnc then dies — and at boot the Codespaces port
 # agent can transiently hold 6080, so the first Xvnc fails with EADDRINUSE
 # ("Address already in use") and exits. So we don't trust the wrapper: we check
-# that something is really listening, and retry until it is (the transient
-# occupant releases within a few seconds).
-for attempt in 1 2 3 4 5; do
-  if listening "$WEB_PORT"; then
-    log "desktop serving on $WEB_PORT"
-    break
-  fi
+# that something is really listening, and retry until it is.
+#
+# The transient occupant usually releases within seconds, but on a cold start
+# it can hold the port far longer — long enough to burn through a handful of
+# back-to-back attempts and leave the desktop down (Connect then just hangs).
+# So we retry on a wall-clock budget rather than a fixed attempt count, and
+# when the port is held by someone else (EADDRINUSE) we wait for them to let go
+# before relaunching instead of spending an attempt fighting for it.
+START_DEADLINE=$(( $(date +%s) + 120 ))
+attempt=0
+while ! vnc_serving && [ "$(date +%s)" -lt "$START_DEADLINE" ]; do
+  attempt=$((attempt + 1))
   log "starting KasmVNC on $VNC_DISPLAY (web $WEB_PORT), attempt $attempt"
   launch_vnc
   for _ in 1 2 3 4 5 6 7 8 9 10; do
-    listening "$WEB_PORT" && break
+    vnc_serving && break
     sleep 1
   done
-  if listening "$WEB_PORT"; then
-    log "desktop serving on $WEB_PORT"
-    break
-  fi
-  log "not serving after attempt $attempt (likely EADDRINUSE); retrying"
-  sleep 2
+  vnc_serving && break
+  log "not serving after attempt $attempt (likely EADDRINUSE); waiting before retry"
+  # Our Xvnc died (almost always EADDRINUSE from the port agent still holding
+  # 6080). Don't relaunch in a tight loop — give the occupant time to release
+  # the port, then try again until the wall-clock budget is spent.
+  sleep 3
 done
 
-listening "$WEB_PORT" \
+vnc_serving \
   && log "ready -> KasmVNC web on :${WEB_PORT}" \
   || log "ERROR: desktop never bound :${WEB_PORT} after retries"
 exit 0
