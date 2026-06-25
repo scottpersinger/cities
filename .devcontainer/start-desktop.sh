@@ -45,15 +45,16 @@ fi
 
 mkdir -p "$HOME/.vnc"
 
-# postStartCommand can fire more than once around a cold start (and runs again
-# on every resume). Without serialization two invocations race: each attempt
-# begins with `vncserver -kill :1`, so the second run kills the desktop the
-# first one just bound and then collides on the port (EADDRINUSE) — leaving the
-# desktop down even though one launch succeeded. Hold an exclusive lock for the
-# whole run; a later invocation waits, then finds the desktop already serving
-# and no-ops. flock self-releases when the script exits.
+# Serialize invocations so two overlapping runs can't race launch_vnc and kill
+# each other's Xvnc. Bounded wait (-w): never block forever — if another run
+# holds the lock longer than the whole start budget, just bail rather than
+# pile up. CRITICAL: the lock fd must be close-on-exec, otherwise the launched
+# Xvnc/XFCE/dbus inherit fd 9 and hold the lock for the entire life of the
+# desktop, so every later invocation deadlocks on flock (and Connect hangs).
+# `exec {LOCK_FD}>` + setting close-on-exec via the launch redirection (9>&-)
+# keeps the lock scoped to this script's process only.
 exec 9>"$HOME/.vnc/start-desktop.lock"
-flock 9
+flock -w 130 9 || { log "another start-desktop run holds the lock; exiting"; exit 0; }
 
 # KasmVNC won't start non-interactively until a control user with write access
 # exists: otherwise `vncserver` prints "you need a KasmVNC user with write
@@ -87,13 +88,16 @@ EOF
 #   -WebpEncodingTime 0 disables WebP (forces JPEG): KasmVNC's WebP frames can
 #   fail to decode in the browser ("Failed to decode frame at index 0"); JPEG
 #   is reliable.
+# `9>&-` closes the lock fd for vncserver and everything it spawns (Xvnc, XFCE,
+# dbus) so the long-running desktop never inherits and pins the flock. Without
+# this the lock outlives the script and later runs deadlock.
 launch_vnc() {
-  vncserver -kill "$VNC_DISPLAY" >/dev/null 2>&1 || true
+  vncserver -kill "$VNC_DISPLAY" >/dev/null 2>&1 9>&- || true
   rm -f "/tmp/.X${VNC_DISPLAY#:}-lock" "/tmp/.X11-unix/X${VNC_DISPLAY#:}" 2>/dev/null || true
   vncserver "$VNC_DISPLAY" -select-de XFCE \
     -geometry "$VNC_GEOMETRY" -depth "$VNC_DEPTH" \
     -websocketPort "$WEB_PORT" -disableBasicAuth -WebpEncodingTime 0 \
-    </dev/null >/tmp/kasmvnc.log 2>&1 || log "vncserver exited $?"
+    </dev/null >/tmp/kasmvnc.log 2>&1 9>&- || log "vncserver exited $?"
 }
 
 # Bring the web port up, verifying it actually binds. The vncserver wrapper
