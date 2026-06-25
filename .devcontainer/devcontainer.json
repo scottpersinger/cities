@@ -6,11 +6,16 @@
     "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
     "ghcr.io/devcontainers/features/sshd:1": {}
   },
-  // Deliberately NOT in forwardPorts: eagerly forwarding 6080 makes the
-  // Codespaces port forwarder pre-bind the port at boot, so KasmVNC then dies
-  // with EADDRINUSE and the desktop never comes up. Let KasmVNC bind first;
-  // Codespaces auto-forwards 6080 once it sees the listener. portsAttributes
-  // still applies to the auto-forwarded port.
+  // 6080 must be in forwardPorts so the public forwarded URL
+  // (<codespace>-6080.app.github.dev) actually maps to it. Auto-forward only
+  // fires when the VS Code editor client detects the listener; the Codespaces
+  // Manager app starts the desktop headlessly over `gh codespace ssh` with no
+  // editor attached, so without this the port is never forwarded and the URL
+  // 404s. The downside — the forwarder transiently pre-binds 6080 at boot, so a
+  // desktop launched right then dies with EADDRINUSE — is handled by
+  // start-desktop.sh, which retries until the pre-bind releases and KasmVNC
+  // binds (post-boot 6080 is reliably free).
+  "forwardPorts": [6080],
   "portsAttributes": {
     "6080": { "label": "desktop (KasmVNC)", "onAutoForward": "openPreview" }
   },
