@@ -25,7 +25,6 @@ plain text command you type in the conversation.
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import os
 import random
@@ -562,12 +561,6 @@ async def handle_user_message(event: dict[str, Any], client) -> None:
     )
     await botspeak.open()
 
-    transcript = io.StringIO()
-    transcript.write(
-        f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} session={skey} user={user} ===\n\n"
-    )
-    transcript.write(f"[user]\n{text}\n\n")
-    tool_count = 0
     last_result_summary = ""
     error: Exception | None = None
 
@@ -575,52 +568,24 @@ async def handle_user_message(event: dict[str, Any], client) -> None:
         async for chunk in session.send(text):
             if chunk.kind == "text":
                 await streamer.append(chunk.text)
-                transcript.write(f"[assistant]\n{chunk.text}\n\n")
             elif chunk.kind == "tool_use":
-                tool_count += 1
-                transcript.write(f"{chunk.text}\n\n")
                 await botspeak.add_tool(chunk.name, chunk.args)
             elif chunk.kind == "tool_result":
                 if chunk.is_error:
                     await botspeak.add_tool_error(chunk.text)
             elif chunk.kind == "result":
                 if chunk.text:
-                    transcript.write(f"[result] {chunk.text}\n")
                     last_result_summary = chunk.text
         await streamer.flush(force=True)
     except Exception as e:
         error = e
         log.exception("session error on %s", skey)
-        transcript.write(f"\n[error] {type(e).__name__}: {e}\n")
         await streamer.replace_with(f":warning: error: `{e}`")
 
     await botspeak.finish(
         last_result_summary,
         error=f"{type(error).__name__}: {error}" if error else None,
     )
-
-    if tool_count > 0 or error is not None:
-        await _upload_transcript(
-            client, channel, reply_thread, skey, transcript.getvalue(),
-        )
-
-
-async def _upload_transcript(
-    client, channel: str, thread_ts: str | None, skey: str, content: str,
-) -> None:
-    safe_key = skey.replace(":", "-").replace(".", "-")
-    filename = f"transcript-{safe_key}-{int(time.time())}.txt"
-    try:
-        await client.files_upload_v2(
-            channel=channel,
-            thread_ts=thread_ts,
-            content=content,
-            filename=filename,
-            title=f"transcript ({skey})",
-            snippet_type="text",
-        )
-    except Exception:
-        log.exception("transcript upload failed for %s", skey)
 
 
 async def _on_pr_review_requested(pr: PR) -> None:
@@ -646,7 +611,7 @@ async def _on_pr_review_requested(pr: PR) -> None:
     parent_ts = resp["ts"]
 
     # Synthesize an event so handle_user_message can run the normal pipeline
-    # (streaming reply, transcript, botspeak) for a self-initiated turn.
+    # (streaming reply, botspeak) for a self-initiated turn.
     # `user` isn't a real Slack user_id — it'll render as raw text in the
     # botspeak header, which is fine and signals "automated trigger".
     synthesized = {
