@@ -13,16 +13,29 @@ VNC_GEOMETRY="${VNC_GEOMETRY:-1440x900}"
 VNC_DEPTH="${VNC_DEPTH:-24}"
 
 log() { echo "[start-desktop] $*"; }
-listening() { ss -ltn 2>/dev/null | grep -q ":$1 "; }
 
-# True only when *our* KasmVNC is actually up: the Xvnc process from the pidfile
-# is alive AND the web port is bound. Plain `listening` can be fooled by the
-# Codespaces port agent transiently holding 6080 at boot, which would make us
-# declare success while no desktop is really serving.
+# The pid recorded in our KasmVNC pidfile (empty if we haven't launched).
+our_xvnc_pid() { cat "$HOME/.vnc/"*":${VNC_DISPLAY#:}.pid" 2>/dev/null | head -1; }
+
+# Who currently owns the WEB_PORT listening socket, as "name/pid" (for logs).
+# Anything we don't recognise here is the boot-time occupant we collide with.
+port_owner() {
+  ss -ltnp 2>/dev/null | grep ":$WEB_PORT " \
+    | grep -oE '"[^"]+",pid=[0-9]+' | head -1 | tr -d '"' | sed 's/,pid=/\//'
+}
+
+# True only when the process actually *listening* on WEB_PORT is our own Xvnc.
+# This is the crucial distinction: at boot an external occupant (the Codespaces
+# port forwarder) holds 6080, so our Xvnc dies with EADDRINUSE — yet for a beat
+# the pidfile pid is alive AND the port is occupied (by the occupant), which is
+# enough to fool a "pid alive && something on the port" check into a false
+# "serving". Matching the socket's *owning* pid to our pidfile can't be fooled:
+# only one process can own the listen socket, and we require it to be ours.
 vnc_serving() {
   local pid
-  pid=$(cat "$HOME/.vnc/"*":${VNC_DISPLAY#:}.pid" 2>/dev/null | head -1)
-  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && listening "$WEB_PORT"
+  pid=$(our_xvnc_pid)
+  [ -n "$pid" ] || return 1
+  ss -ltnp 2>/dev/null | grep ":$WEB_PORT " | grep -q "pid=$pid,"
 }
 
 if ! command -v vncserver >/dev/null 2>&1; then
@@ -96,10 +109,10 @@ while ! vnc_serving && [ "$(date +%s)" -lt "$START_DEADLINE" ]; do
     sleep 1
   done
   vnc_serving && break
-  log "not serving after attempt $attempt (likely EADDRINUSE); waiting before retry"
-  # Our Xvnc died (almost always EADDRINUSE from the port agent still holding
-  # 6080). Don't relaunch in a tight loop — give the occupant time to release
-  # the port, then try again until the wall-clock budget is spent.
+  # Our Xvnc didn't take the port — almost always EADDRINUSE because something
+  # else still holds 6080. Log who, so we can see the occupant in creation.log,
+  # then back off (don't relaunch tight) until the wall-clock budget is spent.
+  log "not serving after attempt $attempt; :$WEB_PORT held by: $(port_owner || echo 'nobody/unknown')"
   sleep 3
 done
 
