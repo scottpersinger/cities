@@ -26,6 +26,7 @@ from __future__ import annotations
 import asyncio
 import os
 import secrets
+import subprocess
 import sys
 import urllib.parse
 import webbrowser
@@ -53,6 +54,30 @@ DEFAULT_USER_SCOPES = [
 AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
 ACCESS_URL = "https://slack.com/api/oauth.v2.access"
 TOKEN_FILE = os.path.join(os.path.dirname(__file__), ".slack_user_token")
+
+
+# Path to the desktop-Chrome wrapper baked into the devcontainer image (it adds
+# the container-friendly --no-sandbox flags). When present we launch it directly
+# on the XFCE display rather than going through webbrowser/$BROWSER: VS Code's
+# integrated terminal overrides $BROWSER with a helper that opens the link on the
+# *client* machine, which can't reach the localhost callback running in here.
+DESKTOP_CHROME = "/usr/local/bin/google-chrome"
+
+
+def _open_browser(url: str) -> None:
+    if os.path.exists(DESKTOP_CHROME):
+        env = {**os.environ, "DISPLAY": os.getenv("DISPLAY", ":1")}
+        try:
+            subprocess.Popen(
+                [DESKTOP_CHROME, url],
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        except OSError:
+            pass  # fall through to webbrowser
+    webbrowser.open(url)
 
 
 def _redirect_uri() -> str:
@@ -113,7 +138,7 @@ async def run() -> str:
     })
     authorize = f"{AUTHORIZE_URL}?{params}"
     print("Opening browser to authorize. If it doesn't open, visit:\n", authorize)
-    webbrowser.open(authorize)
+    _open_browser(authorize)
 
     try:
         await asyncio.wait_for(done.wait(), timeout=300)
