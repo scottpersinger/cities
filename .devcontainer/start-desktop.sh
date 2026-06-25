@@ -45,6 +45,16 @@ fi
 
 mkdir -p "$HOME/.vnc"
 
+# postStartCommand can fire more than once around a cold start (and runs again
+# on every resume). Without serialization two invocations race: each attempt
+# begins with `vncserver -kill :1`, so the second run kills the desktop the
+# first one just bound and then collides on the port (EADDRINUSE) — leaving the
+# desktop down even though one launch succeeded. Hold an exclusive lock for the
+# whole run; a later invocation waits, then finds the desktop already serving
+# and no-ops. flock self-releases when the script exits.
+exec 9>"$HOME/.vnc/start-desktop.lock"
+flock 9
+
 # KasmVNC won't start non-interactively until a control user with write access
 # exists: otherwise `vncserver` prints "you need a KasmVNC user with write
 # permissions / [1] Create a new user [2] Start without one" and waits for a
