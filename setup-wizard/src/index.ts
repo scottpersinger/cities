@@ -3,6 +3,7 @@ import * as p from "@clack/prompts";
 import { inspect } from "node:util";
 import { ask } from "./prompt.js";
 import { inDesktop } from "./env.js";
+import { ensureDesktop } from "./preflight.js";
 import { loadState, markComplete, saveState } from "./state.js";
 import { steps } from "./steps/index.js";
 import type { StepContext } from "./types.js";
@@ -35,6 +36,10 @@ async function main() {
     );
     return;
   }
+
+  // Pre-step: bring up the desktop before any browser/agent-auth step (they open
+  // Chrome on DISPLAY :1, which only exists while KasmVNC is running).
+  await ensureDesktop();
 
   // Resume support: if some steps are already done, offer to jump in.
   let startIndex = 0;
