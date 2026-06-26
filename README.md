@@ -4,6 +4,18 @@ A reusable **GitHub Codespaces environment** for an autonomous coding agent.
 This repo is not a project — it's the *machine definition*. You create a
 codespace from it, then the agent clones and runs **any** GitHub repo inside it.
 
+## Setup
+
+Run the setup wizard from the repo root:
+
+```bash
+./setup.sh
+```
+
+It installs/authenticates the agent, wires up Claude-in-Chrome, and connects the
+event bridge. (It also auto-launches the first time you open the codespace in VS
+Code.)
+
 ## What you get
 
 - **XFCE desktop in the browser** via **KasmVNC** (port `6080`, auto-connects,
