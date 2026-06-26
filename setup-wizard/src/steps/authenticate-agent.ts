@@ -1,12 +1,35 @@
 import * as p from "@clack/prompts";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claude } from "../env.js";
+import { claude, BRIDGE_DIR } from "../env.js";
 import { ask } from "../prompt.js";
 import type { Step } from "../types.js";
 
 const CREDENTIALS = path.join(os.homedir(), ".claude", ".credentials.json");
+
+// Upsert KEY=value into an env file, preserving every other line. Mirrors the
+// bridge .env upsert Central does over SSH.
+function upsertEnv(file: string, key: string, value: string): void {
+  const lines = existsSync(file)
+    ? readFileSync(file, "utf8").split("\n").filter((l) => !l.startsWith(`${key}=`))
+    : [];
+  while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+  lines.push(`${key}=${value}`);
+  writeFileSync(file, lines.join("\n") + "\n", { mode: 0o600 });
+}
+
+// Persist the API key so (a) the rest of this wizard run (the step-4 smoke test)
+// can use it, and (b) the bot picks it up: app.py / axon_bridge.py load the
+// bridge .env, and the claude subprocess they spawn inherits ANTHROPIC_API_KEY.
+function persistApiKey(key: string): { wroteEnv: boolean } {
+  process.env.ANTHROPIC_API_KEY = key;
+  if (existsSync(BRIDGE_DIR)) {
+    upsertEnv(path.join(BRIDGE_DIR, ".env"), "ANTHROPIC_API_KEY", key);
+    return { wroteEnv: true };
+  }
+  return { wroteEnv: false };
+}
 
 /** Step 2 — authenticate the agent against the user's Claude account. */
 export const authenticateAgent: Step = {
@@ -20,6 +43,44 @@ export const authenticateAgent: Step = {
   },
 
   async run() {
+    const method = await ask(
+      p.select({
+        message: "How do you want to authenticate Claude Code?",
+        options: [
+          {
+            value: "browser",
+            label: "Log in with your Claude account",
+            hint: "email + verification code, in the desktop browser",
+          },
+          {
+            value: "apikey",
+            label: "Enter an Anthropic API key",
+            hint: "sk-ant-… — no browser needed",
+          },
+        ],
+        initialValue: "browser",
+      }),
+    );
+
+    if (method === "apikey") {
+      const key = await ask(
+        p.password({
+          message: "Paste your Anthropic API key",
+          validate: (v) =>
+            v && v.trim().startsWith("sk-ant-")
+              ? undefined
+              : "Expected a key starting with sk-ant-",
+        }),
+      );
+      const { wroteEnv } = persistApiKey(key.trim());
+      p.log.success(
+        wroteEnv
+          ? "API key saved to the bot's .env and this session — Claude Code will use it."
+          : "API key set for this session (bridge dir not found, so nothing persisted to disk).",
+      );
+      return;
+    }
+
     p.note(
       [
         "Claude Code will open its login page in the desktop Chrome.",

@@ -64,16 +64,22 @@ async function main() {
     const step = steps[i];
     p.log.step(`Step ${i + 1}/${steps.length} — ${step.title}`);
 
-    // Idempotency: offer to skip already-satisfied steps.
+    // Idempotency: skip already-satisfied steps. autoSkip steps skip silently
+    // (the environment guarantees them); others ask the user to confirm.
     if (step.check) {
       try {
         if (await step.check(ctx)) {
-          const skip = await ask(
-            p.confirm({
-              message: `"${step.title}" looks already done. Skip it?`,
-              initialValue: true,
-            }),
-          );
+          let skip = true;
+          if (step.autoSkip) {
+            p.log.info(`"${step.title}" is already done — skipping.`);
+          } else {
+            skip = await ask(
+              p.confirm({
+                message: `"${step.title}" looks already done. Skip it?`,
+                initialValue: true,
+              }),
+            );
+          }
           if (skip) {
             markComplete(state, step.id);
             await ctx.save();

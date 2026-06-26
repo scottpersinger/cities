@@ -31,6 +31,13 @@ export interface Step {
    * always run.
    */
   check?: (ctx: StepContext) => Promise<boolean>;
+  /**
+   * When true, a satisfied `check()` skips the step silently instead of asking
+   * the user to confirm. Use for steps the environment guarantees (e.g. an
+   * agent the image pre-installs) where the "looks done, skip it?" prompt is
+   * just noise.
+   */
+  autoSkip?: boolean;
   /** Do the work. Throw to signal failure; the runner handles reporting. */
   run: (ctx: StepContext) => Promise<void>;
 }

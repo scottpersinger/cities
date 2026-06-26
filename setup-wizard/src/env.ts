@@ -13,6 +13,14 @@ export const CHROME = "/usr/local/bin/google-chrome";
 /** Home for wizard state and any other coderbots-local files. */
 export const CODERBOTS_HOME = path.join(os.homedir(), ".coderbots");
 
+/**
+ * The Slack/Axon bridge directory in the codespace. Its `.env` is what the bot
+ * (app.py / axon_bridge.py) loads, so secrets the wizard collects (e.g. an
+ * Anthropic API key) are persisted here. Mirrors the path Central's SSH
+ * provisioning writes to.
+ */
+export const BRIDGE_DIR = "/workspaces/cities/claude-slack-bot";
+
 /** Are we actually inside the Codespace desktop (vs. a dev machine)? */
 export const inDesktop = process.platform === "linux" && existsSync(CHROME);
 

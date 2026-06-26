@@ -14,6 +14,9 @@ export const installAgent: Step = {
     // so on a fresh codespace this is usually already satisfied.
     return which("claude");
   },
+  // Claude Code is pre-installed by the image, so when it's present just skip
+  // silently — no need to ask the user to confirm.
+  autoSkip: true,
 
   async run(ctx) {
     const agent = await ask(
