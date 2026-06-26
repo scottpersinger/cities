@@ -1,4 +1,5 @@
 import * as p from "@clack/prompts";
+import net from "node:net";
 import { openUrl, capture } from "../env.js";
 import { upsertBridgeEnv, restartBridge } from "../bridge-ctl.js";
 import { ask } from "../prompt.js";
@@ -8,7 +9,27 @@ import type { Step, StepContext } from "../types.js";
 const EXTENSION_URL = "https://chromewebstore.google.com/search/claude%20chrome";
 // The desktop Chrome's remote-debugging endpoint (enabled by the image's
 // google-chrome wrapper, --remote-debugging-port=9222).
-const DEBUG_URL = "http://127.0.0.1:9222";
+const DEBUG_PORT = 9222;
+const DEBUG_URL = `http://127.0.0.1:${DEBUG_PORT}`;
+
+// Is something listening on the Chrome debug port? (no PATH/binary dependency)
+function debugPortOpen(timeoutMs = 1500): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = new net.Socket();
+    let done = false;
+    const finish = (ok: boolean) => {
+      if (done) return;
+      done = true;
+      sock.destroy();
+      resolve(ok);
+    };
+    sock.setTimeout(timeoutMs);
+    sock.once("connect", () => finish(true));
+    sock.once("timeout", () => finish(false));
+    sock.once("error", () => finish(false));
+    sock.connect(DEBUG_PORT, "127.0.0.1");
+  });
+}
 
 // Option A: the Claude-in-Chrome extension (CLAUDE_CHROME on -> claude --chrome).
 async function setupExtension(ctx: StepContext): Promise<void> {
@@ -53,6 +74,20 @@ async function setupDevtoolsMcp(ctx: StepContext): Promise<void> {
     ].join("\n"),
     "Chrome DevTools MCP",
   );
+
+  // Warn early if Chrome isn't exposing the debug port — the MCP can register
+  // fine but won't be able to connect at runtime until this is up.
+  if (!(await debugPortOpen())) {
+    p.log.warn(
+      `Chrome's debug port (${DEBUG_PORT}) isn't responding. The agent can't ` +
+        "drive Chrome over CDP until it is — usually because the codespace " +
+        "image hasn't been rebuilt with --remote-debugging-port, or the desktop " +
+        "Chrome isn't running. Rebuild the container (or start the desktop) and " +
+        "re-run this step. Registering the MCP anyway.",
+    );
+  } else {
+    p.log.success(`Chrome debug port ${DEBUG_PORT} is open.`);
+  }
 
   const s = p.spinner();
   s.start("Registering the chrome-devtools MCP server (user scope)…");
