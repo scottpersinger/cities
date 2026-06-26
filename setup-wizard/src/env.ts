@@ -67,19 +67,32 @@ export function claude(args: string[] = [], opts: Options = {}): ResultPromise {
 /**
  * Open a URL in the desktop Chrome (or the host browser when developing off
  * the Codespace). Fire-and-forget — never blocks the wizard.
+ *
+ * Notes that bit us before:
+ *  - $BROWSER is deliberately ignored on Linux: VS Code overrides it with a
+ *    helper that opens links on the *client* machine, not the in-codespace
+ *    desktop the user is viewing over KasmVNC.
+ *  - DISPLAY must point at the desktop X server (:1). It's set via containerEnv
+ *    for normal shells, but can be missing when the wizard runs over
+ *    `gh codespace ssh`, so default it here.
+ *  - execa() reports a bad binary asynchronously, so we existsSync() the Chrome
+ *    wrapper instead of relying on a try/catch around a detached spawn.
  */
 export async function openUrl(url: string): Promise<void> {
-  const candidates =
-    process.platform === "darwin"
-      ? ["open"]
-      : [process.env.BROWSER, CHROME, "xdg-open"].filter(Boolean) as string[];
-
-  for (const bin of candidates) {
-    try {
-      execa(bin, [url], { detached: true, stdio: "ignore" }).unref();
-      return;
-    } catch {
-      // try the next candidate
-    }
+  // macOS dev convenience.
+  if (process.platform === "darwin") {
+    execa("open", [url], { detached: true, stdio: "ignore" }).unref();
+    return;
   }
+
+  const env = { ...process.env, DISPLAY: process.env.DISPLAY || ":1" };
+
+  // In the Codespace desktop, force the sandbox-disabled Chrome wrapper.
+  if (existsSync(CHROME)) {
+    execa(CHROME, [url], { detached: true, stdio: "ignore", env }).unref();
+    return;
+  }
+
+  // Fallback for non-desktop Linux.
+  execa("xdg-open", [url], { detached: true, stdio: "ignore", env }).unref();
 }
