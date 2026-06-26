@@ -1,0 +1,25 @@
+{
+  "name": "@coderbots/setup-wizard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Rich CLI setup wizard run inside an agent-dev-desktop Codespace to install + authenticate a coding agent, wire up Claude-in-Chrome, connect to Central, and pick a repo to work on.",
+  "bin": {
+    "coderbots-setup": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.7.0",
+    "execa": "^9.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
