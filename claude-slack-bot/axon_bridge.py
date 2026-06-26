@@ -8,13 +8,28 @@ the codespace's own bot token. Nothing is published back through the Axon.
 
 Run:  uv run python axon_bridge.py
 
-Resolves the Axon to subscribe to, in order:
-  1. AXON_ID env var (handy for local/manual testing), else
-  2. the bootstrap endpoint: GET {CENTRAL_BOOTSTRAP_URL}?name={CODESPACE_NAME}
-     with `Authorization: Bearer {CENTRAL_BOOTSTRAP_TOKEN}`.
+Two transports, selected by env (see docs/axon-multitenant-security.md):
 
-Required env: RUNLOOP_API_KEY, SLACK_BOT_TOKEN, and either AXON_ID or
-(CENTRAL_BOOTSTRAP_URL + CENTRAL_BOOTSTRAP_TOKEN + CODESPACE_NAME).
+  * Relay mode (AXON_RELAY_URL set) — multi-tenant safe. Subscribe through
+    Central's relay with a per-codespace bearer token (AXON_RELAY_TOKEN) that
+    Central maps to exactly this codespace's Axon. No Runloop key and no
+    account-wide axon listing live in the codespace, so a compromised codespace
+    can reach only its own Axon.
+
+  * Direct mode (legacy, default when AXON_RELAY_URL is unset) — the codespace
+    holds the account RUNLOOP_API_KEY and talks to Runloop directly. Runloop has
+    no per-axon authorization, so that key can read/publish every tenant's Axon.
+    Only safe single-tenant or with the interim mitigations in the doc.
+
+Direct mode resolves the Axon by:
+  1. AXON_ID env var (preferred — Central injects it; no account-wide read), else
+  2. listing axons by name `cs-<CODESPACE_NAME>` (requires an account-scoped key;
+     disable with AXON_ALLOW_NAME_LOOKUP=0).
+
+Required env:
+  * SLACK_BOT_TOKEN, always.
+  * Relay mode:  AXON_RELAY_URL + AXON_RELAY_TOKEN.
+  * Direct mode: RUNLOOP_API_KEY + (AXON_ID or CODESPACE_NAME).
 """
 
 from __future__ import annotations
@@ -26,6 +41,7 @@ import os
 import random
 import signal
 import time
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import aiohttp
@@ -226,6 +242,22 @@ async def resolve_axon_id(http: aiohttp.ClientSession, api_key: str) -> str:
         log.info("using AXON_ID from env: %s", direct)
         return direct
 
+    # Falling back to the account-wide list. This requires a Runloop key that can
+    # read *every* axon in the account, which is not multi-tenant-isolated — a
+    # compromised codespace could enumerate and subscribe to other tenants' axons.
+    # Central should inject AXON_ID directly (it names axons deterministically) so
+    # this path is never taken in production. See docs/axon-multitenant-security.md.
+    if not _truthy(os.getenv("AXON_ALLOW_NAME_LOOKUP", "1")):
+        raise SystemExit(
+            "AXON_ID not set and name lookup disabled (AXON_ALLOW_NAME_LOOKUP=0). "
+            "Provision AXON_ID directly, or use relay mode (AXON_RELAY_URL)."
+        )
+    log.warning(
+        "SECURITY: resolving axon via account-wide list (GET /v1/axons); this needs "
+        "an account-scoped Runloop key and is not multi-tenant-isolated. Prefer "
+        "injecting AXON_ID or using AXON_RELAY_URL — see docs/axon-multitenant-security.md."
+    )
+
     codespace = os.environ["CODESPACE_NAME"]  # always set inside a codespace
     name = f"cs-{codespace}"
     log.info("resolving axon by name: %s", name)
@@ -259,23 +291,23 @@ async def resolve_axon_id(http: aiohttp.ClientSession, api_key: str) -> str:
 SEQ_DIR = os.getenv("AXON_SEQ_DIR") or os.path.dirname(os.path.abspath(__file__))
 
 
-def _seq_path(axon_id: str) -> str:
-    return os.path.join(SEQ_DIR, f".axon-{axon_id}.seq")
+def _seq_path(key: str) -> str:
+    return os.path.join(SEQ_DIR, f".axon-{key}.seq")
 
 
-def load_seq(axon_id: str) -> int:
-    """Last sequence we durably recorded for this axon, or -1 if none."""
+def load_seq(key: str) -> int:
+    """Last sequence we durably recorded for this stream, or -1 if none."""
     try:
-        with open(_seq_path(axon_id)) as f:
+        with open(_seq_path(key)) as f:
             return int(f.read().strip())
     except (FileNotFoundError, ValueError):
         return -1
 
 
-def save_seq(axon_id: str, seq: int) -> None:
+def save_seq(key: str, seq: int) -> None:
     """Persist the read offset atomically (write-then-rename). Best-effort: a
     failure here just risks reprocessing on a future restart, never a crash."""
-    path = _seq_path(axon_id)
+    path = _seq_path(key)
     tmp = f"{path}.tmp"
     try:
         with open(tmp, "w") as f:
@@ -285,10 +317,52 @@ def save_seq(axon_id: str, seq: int) -> None:
         log.warning("could not persist axon sequence %s: %s", seq, e)
 
 
+@dataclass
+class Transport:
+    """How the bridge reaches its event stream. Built once at startup so the SSE
+    loop is identical whether we go through Central's relay or straight to
+    Runloop — only the URL, auth header, and seq-file key differ."""
+
+    subscribe_url: str  # full SSE endpoint, ready to GET with after_sequence params
+    headers: dict[str, str]  # auth + Accept; never logged
+    seq_key: str  # stable id for the persisted read offset (.axon-<seq_key>.seq)
+
+
+async def build_transport(http: aiohttp.ClientSession) -> Transport:
+    """Pick relay (multi-tenant safe) or direct (legacy) transport from env.
+
+    Relay mode keeps the Runloop key out of the codespace entirely: Central holds
+    it, validates the per-codespace bearer token, and proxies only this
+    codespace's Axon. See docs/axon-multitenant-security.md.
+    """
+    relay = os.getenv("AXON_RELAY_URL")
+    if relay:
+        token = os.environ["AXON_RELAY_TOKEN"]  # presence enforced by _missing_config
+        base = relay.rstrip("/")
+        # The relay is already scoped to this codespace's Axon, so there is no axon
+        # id in the path — Central resolves it from the token.
+        url = f"{base}/subscribe/sse"
+        key = os.getenv("CODESPACE_NAME") or "relay"
+        log.info("transport: Central relay at %s (no Runloop key in codespace)", base)
+        return Transport(
+            subscribe_url=url,
+            headers={"Authorization": f"Bearer {token}", "Accept": "text/event-stream"},
+            seq_key=f"relay-{key}",
+        )
+
+    api_key = os.environ["RUNLOOP_API_KEY"]  # presence enforced by _missing_config
+    axon_id = await resolve_axon_id(http, api_key)
+    log.info("transport: direct to Runloop, axon %s", axon_id)
+    return Transport(
+        subscribe_url=f"{RUNLOOP_BASE_URL}/v1/axons/{axon_id}/subscribe/sse",
+        headers={"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream"},
+        seq_key=axon_id,
+    )
+
+
 async def consume(
     http: aiohttp.ClientSession,
-    axon_id: str,
-    api_key: str,
+    transport: Transport,
     sessions: SessionManager,
     slack: AsyncWebClient,
     stop: asyncio.Event,
@@ -296,10 +370,11 @@ async def consume(
     """Subscribe to the Axon SSE stream and dispatch events. Tracks the last
     sequence and reconnects from it on idle timeout (408) or disconnect — the
     resume strategy proven in the spike (design §10)."""
-    url = f"{RUNLOOP_BASE_URL}/v1/axons/{axon_id}/subscribe/sse"
-    headers = {"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream"}
+    url = transport.subscribe_url
+    headers = transport.headers
+    seq_key = transport.seq_key
     # Resume past what we already processed across restarts, not just reconnects.
-    after_seq = load_seq(axon_id)
+    after_seq = load_seq(seq_key)
     if after_seq >= 0:
         log.info("resuming from persisted sequence %s", after_seq)
     # Hold references to in-flight turn tasks so they aren't garbage-collected
@@ -318,7 +393,7 @@ async def consume(
                     log.error("subscribe HTTP %s: %s", resp.status, body[:300])
                     await asyncio.sleep(2)
                     continue
-                log.info("subscribed to %s (after_sequence=%s)", axon_id, after_seq)
+                log.info("subscribed to %s (after_sequence=%s)", seq_key, after_seq)
                 event_name: Optional[str] = None
                 data_lines: list[str] = []
                 async for raw in resp.content:
@@ -334,7 +409,7 @@ async def consume(
                                 # Persist the offset as we advance it (matches the
                                 # in-memory reconnect-resume semantics) so a restart
                                 # doesn't replay the whole log.
-                                save_seq(axon_id, after_seq)
+                                save_seq(seq_key, after_seq)
                                 # Run the turn concurrently so the SSE loop keeps
                                 # reading; per-thread ordering is held by the
                                 # Session lock inside SessionManager.
@@ -355,18 +430,28 @@ async def consume(
 
 def _missing_config() -> list[str]:
     """Required config the bridge can't start without, given the current env.
-    Call after refreshing from .env."""
-    missing = [
-        k for k in ("RUNLOOP_API_KEY", "SLACK_BOT_TOKEN") if not os.environ.get(k)
-    ]
-    # The axon can be given directly (AXON_ID) or resolved from CODESPACE_NAME.
-    if not (os.environ.get("AXON_ID") or os.environ.get("CODESPACE_NAME")):
-        missing.append("AXON_ID (or CODESPACE_NAME)")
+    Call after refreshing from .env. Requirements differ by transport: relay mode
+    needs only the relay URL+token (no Runloop key), direct mode needs the Runloop
+    key and a way to find the axon."""
+    missing = [] if os.environ.get("SLACK_BOT_TOKEN") else ["SLACK_BOT_TOKEN"]
+    if os.environ.get("AXON_RELAY_URL"):
+        # Relay mode: Central holds the Runloop key and resolves the axon.
+        if not os.environ.get("AXON_RELAY_TOKEN"):
+            missing.append("AXON_RELAY_TOKEN")
+    else:
+        # Direct mode: the codespace authenticates to Runloop itself.
+        if not os.environ.get("RUNLOOP_API_KEY"):
+            missing.append("RUNLOOP_API_KEY")
+        # The axon can be given directly (AXON_ID) or resolved from CODESPACE_NAME.
+        if not (os.environ.get("AXON_ID") or os.environ.get("CODESPACE_NAME")):
+            missing.append("AXON_ID (or CODESPACE_NAME)")
     return missing
 
 
-async def wait_for_config(poll_secs: float = 3.0) -> tuple[str, str]:
-    """Block until the required config is present, re-reading .env each time.
+async def wait_for_config(poll_secs: float = 3.0) -> str:
+    """Block until the required config is present, re-reading .env each time,
+    then return SLACK_BOT_TOKEN. Transport credentials are read later by
+    build_transport (they differ by mode).
 
     On a fresh codespace the bridge starts (postStartCommand / supervisord)
     before Central's provisioning has written SLACK_BOT_TOKEN / AXON_ID into
@@ -379,7 +464,7 @@ async def wait_for_config(poll_secs: float = 3.0) -> tuple[str, str]:
         load_dotenv(override=True)
         missing = _missing_config()
         if not missing:
-            return os.environ["RUNLOOP_API_KEY"], os.environ["SLACK_BOT_TOKEN"]
+            return os.environ["SLACK_BOT_TOKEN"]
         if not warned:
             log.warning(
                 "waiting for config: missing %s — re-checking .env every %.0fs",
@@ -393,7 +478,7 @@ async def wait_for_config(poll_secs: float = 3.0) -> tuple[str, str]:
 
 
 async def main() -> None:
-    api_key, slack_token = await wait_for_config()
+    slack_token = await wait_for_config()
 
     sessions = build_session_manager()
     slack = AsyncWebClient(token=slack_token)
@@ -404,9 +489,9 @@ async def main() -> None:
         loop.add_signal_handler(sig, stop.set)
 
     async with aiohttp.ClientSession() as http:
-        axon_id = await resolve_axon_id(http, api_key)
+        transport = await build_transport(http)
         consumer = asyncio.create_task(
-            consume(http, axon_id, api_key, sessions, slack, stop)
+            consume(http, transport, sessions, slack, stop)
         )
         await stop.wait()
         log.info("shutting down")
