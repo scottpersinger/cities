@@ -312,13 +312,47 @@ async def consume(
             await asyncio.sleep(2)
 
 
+def _missing_config() -> list[str]:
+    """Required config the bridge can't start without, given the current env.
+    Call after refreshing from .env."""
+    missing = [
+        k for k in ("RUNLOOP_API_KEY", "SLACK_BOT_TOKEN") if not os.environ.get(k)
+    ]
+    # The axon can be given directly (AXON_ID) or resolved from CODESPACE_NAME.
+    if not (os.environ.get("AXON_ID") or os.environ.get("CODESPACE_NAME")):
+        missing.append("AXON_ID (or CODESPACE_NAME)")
+    return missing
+
+
+async def wait_for_config(poll_secs: float = 3.0) -> tuple[str, str]:
+    """Block until the required config is present, re-reading .env each time.
+
+    On a fresh codespace the bridge starts (postStartCommand / supervisord)
+    before Central's provisioning has written SLACK_BOT_TOKEN / AXON_ID into
+    .env. Rather than exit, we wait: reload .env and re-check every few seconds
+    until the keys appear, then return. `override=True` so values written after
+    the process started replace any stale/empty ones loaded at import.
+    """
+    warned = False
+    while True:
+        load_dotenv(override=True)
+        missing = _missing_config()
+        if not missing:
+            return os.environ["RUNLOOP_API_KEY"], os.environ["SLACK_BOT_TOKEN"]
+        if not warned:
+            log.warning(
+                "waiting for config: missing %s — re-checking .env every %.0fs",
+                ", ".join(missing),
+                poll_secs,
+            )
+            warned = True
+        else:
+            log.debug("still waiting for config: missing %s", ", ".join(missing))
+        await asyncio.sleep(poll_secs)
+
+
 async def main() -> None:
-    api_key = os.environ.get("RUNLOOP_API_KEY")
-    if not api_key:
-        raise SystemExit("RUNLOOP_API_KEY is required")
-    slack_token = os.environ.get("SLACK_BOT_TOKEN")
-    if not slack_token:
-        raise SystemExit("SLACK_BOT_TOKEN is required (the codespace posts to Slack itself)")
+    api_key, slack_token = await wait_for_config()
 
     sessions = build_session_manager()
     slack = AsyncWebClient(token=slack_token)
