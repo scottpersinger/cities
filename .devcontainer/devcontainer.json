@@ -30,6 +30,13 @@
   // wizard's deps so the folderOpen autostart task launches instantly (no npm
   // install on first open). Runs in the workspace folder (/workspaces/cities).
   "postCreateCommand": "npm install -g @anthropic-ai/claude-code && mkdir -p $HOME/projects && npm --prefix setup-wizard install",
+  // Start the Axon bridge under supervisord on every codespace start. supervisord
+  // daemonizes and keeps it alive (restart/backoff/logging). On the very first
+  // boot the bridge has no .env yet and goes FATAL; Central's provisioning runs
+  // `supervisorctl restart axon-bridge` after writing .env to revive it. The
+  // /workspaces volume persists across stop/start, so on later starts the .env
+  // is already there and the bridge comes up immediately.
+  "postStartCommand": "supervisord -c claude-slack-bot/supervisord.conf || true",
   // The desktop is intentionally NOT started here. A KasmVNC launched from a
   // lifecycle command (postStart/postCreate) is reaped by Codespaces shortly
   // after the command finishes, so it's reliably down by the time anyone
