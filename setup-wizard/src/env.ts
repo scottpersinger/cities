@@ -52,13 +52,27 @@ export async function which(bin: string): Promise<boolean> {
 }
 
 /**
+ * True unless CLAUDE_CHROME is explicitly off. Mirrors the bridge's _truthy
+ * (app.py / axon_bridge.py): default ON, disabled by anything not in the
+ * truthy set (0/false/no/off/…). Kept in sync so the wizard's smoke test and
+ * the running bot agree on whether the Claude-in-Chrome MCP is enabled.
+ */
+function chromeEnabled(): boolean {
+  const v = (process.env.CLAUDE_CHROME ?? "1").trim().toLowerCase();
+  return ["1", "true", "yes", "on"].includes(v);
+}
+
+/**
  * Spawn `claude`, forcing BROWSER to the desktop Chrome so its OAuth/login
- * links open where the user can see them. The image's bashrc shim does this
- * for interactive shells, but child processes don't inherit shell functions,
- * so we set it explicitly here.
+ * links open where the user can see them, and (unless CLAUDE_CHROME is off)
+ * passing `--chrome` so the Claude-in-Chrome browser MCP is actually loaded —
+ * without it Claude has no browser-control tools. The image's bashrc shim sets
+ * BROWSER for interactive shells, but child processes don't inherit shell
+ * functions, so we set both explicitly here.
  */
 export function claude(args: string[] = [], opts: Options = {}): ResultPromise {
-  return run("claude", args, {
+  const finalArgs = chromeEnabled() ? ["--chrome", ...args] : args;
+  return run("claude", finalArgs, {
     ...opts,
     env: { ...process.env, BROWSER: CHROME, ...(opts.env ?? {}) },
   });
