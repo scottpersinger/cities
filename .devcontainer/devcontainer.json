@@ -28,7 +28,7 @@
   },
   // Install the agent CLI, make the projects dir, and pre-install the setup
   // wizard's deps so the folderOpen autostart task launches instantly (no npm
-  // install on first open). Runs in the workspace folder (/workspaces/cities).
+  // install on first open). Runs in the workspace folder (/workspaces/<repo>).
   "postCreateCommand": "npm install -g @anthropic-ai/claude-code && mkdir -p $HOME/projects && npm --prefix setup-wizard install",
   // Start the Axon bridge under supervisord on every codespace start. supervisord
   // daemonizes and keeps it alive (restart/backoff/logging). On the very first

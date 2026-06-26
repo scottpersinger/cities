@@ -2,11 +2,12 @@ import { execa, type Options, type ResultPromise } from "execa";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * The sandbox-disabled Chrome wrapper baked into the agent-dev-desktop image
- * (see cities/.devcontainer/Dockerfile). Spawning this directly puts the page
- * on the XFCE desktop (DISPLAY :1) that the user sees over KasmVNC.
+ * (see the repo's .devcontainer/Dockerfile). Spawning this directly puts the
+ * page on the XFCE desktop (DISPLAY :1) that the user sees over KasmVNC.
  */
 export const CHROME = "/usr/local/bin/google-chrome";
 
@@ -14,12 +15,14 @@ export const CHROME = "/usr/local/bin/google-chrome";
 export const CODERBOTS_HOME = path.join(os.homedir(), ".coderbots");
 
 /**
- * The Slack/Axon bridge directory in the codespace. Its `.env` is what the bot
- * (app.py / axon_bridge.py) loads, so secrets the wizard collects (e.g. an
- * Anthropic API key) are persisted here. Mirrors the path Central's SSH
- * provisioning writes to.
+ * The Slack/Axon bridge directory. Its `.env` is what the bot (app.py /
+ * axon_bridge.py) loads, so secrets the wizard collects (e.g. an Anthropic API
+ * key) are persisted here. Derived from this module's own location rather than
+ * hardcoded, so it's independent of the repo name / checkout path: env.ts lives
+ * at <repo>/setup-wizard/{src,dist}/env.* , and the bridge is <repo>/claude-slack-bot.
  */
-export const BRIDGE_DIR = "/workspaces/cities/claude-slack-bot";
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const BRIDGE_DIR = path.resolve(MODULE_DIR, "..", "..", "claude-slack-bot");
 
 /** Are we actually inside the Codespace desktop (vs. a dev machine)? */
 export const inDesktop = process.platform === "linux" && existsSync(CHROME);

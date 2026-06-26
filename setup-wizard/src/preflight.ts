@@ -4,7 +4,7 @@ import net from "node:net";
 import { inDesktop, capture } from "./env.js";
 
 /**
- * The desktop bring-up script baked into the image (cities/.devcontainer/
+ * The desktop bring-up script baked into the image (the repo's .devcontainer/
  * Dockerfile copies start-desktop.sh here). Idempotent: returns fast if KasmVNC
  * is already serving on the web port, otherwise launches XFCE+KasmVNC (a cold
  * start can take up to ~2 min while the boot-time port forwarder releases 6080).
