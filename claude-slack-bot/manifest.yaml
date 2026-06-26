@@ -1,0 +1,55 @@
+# Slack app manifest for a claude-slack-bot "coder bot".
+#
+# Use it either way:
+#   - New app:      api.slack.com/apps -> Create New App -> From a manifest -> YAML
+#   - Existing app: Features -> App Manifest -> paste (YAML tab) -> Save
+#
+# Per bot, change `name` and both `display_name` values below.
+# NOTE: the app icon/avatar is NOT part of the manifest — upload it manually in
+# Basic Information -> Display Information after the app exists.
+# The redirect URL must match SLACK_OAUTH_REDIRECT_URI used by install.py.
+
+display_information:
+  name: my-coder
+  description: Drives a persistent Claude Code session per Slack thread.
+
+features:
+  bot_user:
+    display_name: MyCoder
+    always_online: true
+  slash_commands:
+    - command: /clear
+      description: Reset Claude session in this thread/DM.
+      should_escape: false
+
+oauth_config:
+  redirect_urls:
+    - http://localhost:4555/oauth/callback
+  scopes:
+    bot:
+      - app_mentions:read
+      - chat:write
+      - channels:history
+      - groups:history
+      - im:history
+      - mpim:history
+      - im:read
+      - im:write
+      - users:read
+      - commands
+      - files:write
+      - files:read
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
