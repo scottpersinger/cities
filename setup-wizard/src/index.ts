@@ -64,31 +64,51 @@ async function main() {
     const step = steps[i];
     p.log.step(`Step ${i + 1}/${steps.length} — ${step.title}`);
 
-    // Idempotency: skip already-satisfied steps. autoSkip steps skip silently
-    // (the environment guarantees them); others ask the user to confirm.
+    // Is the step already satisfied? (best-effort; check failures aren't fatal)
+    let satisfied = false;
     if (step.check) {
       try {
-        if (await step.check(ctx)) {
-          let skip = true;
-          if (step.autoSkip) {
-            p.log.info(`"${step.title}" is already done — skipping.`);
-          } else {
-            skip = await ask(
-              p.confirm({
-                message: `"${step.title}" looks already done. Skip it?`,
-                initialValue: true,
-              }),
-            );
-          }
-          if (skip) {
-            markComplete(state, step.id);
-            await ctx.save();
-            continue;
-          }
-        }
+        satisfied = await step.check(ctx);
       } catch {
-        // check failures are non-fatal — just run the step
+        /* ignore — treat as not satisfied */
       }
+    }
+
+    // autoSkip steps the environment guarantees skip silently when satisfied.
+    if (satisfied && step.autoSkip) {
+      p.log.info(`"${step.title}" is already done — skipping.`);
+      markComplete(state, step.id);
+      await ctx.save();
+      continue;
+    }
+
+    // Every step is skippable. Default to skip when it already looks done.
+    const action = await ask(
+      p.select({
+        message: "Run this step?",
+        options: [
+          {
+            value: "run",
+            label: satisfied ? "Run it again" : "Run it",
+            hint: step.summary,
+          },
+          {
+            value: "skip",
+            label: "Skip this step",
+            hint: satisfied ? "looks already done" : "do it later",
+          },
+        ],
+        initialValue: satisfied ? "skip" : "run",
+      }),
+    );
+    if (action === "skip") {
+      // Only mark complete if it's actually satisfied — skipping an unsatisfied
+      // step is "later", so it's re-offered next run (setup isn't "complete").
+      if (satisfied) {
+        markComplete(state, step.id);
+        await ctx.save();
+      }
+      continue;
     }
 
     try {
