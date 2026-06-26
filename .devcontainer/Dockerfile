@@ -38,14 +38,16 @@ RUN . /etc/os-release \
 #   --no-sandbox            : the sandbox can't work in an unprivileged container
 #   --disable-gpu           : there is no GPU; avoids GPU-process init crashes
 #   --disable-dev-shm-usage : /dev/shm is only ~64MB; use /tmp to avoid renderer crashes
+#   --test-type             : hides the yellow "unsupported command-line flag:
+#                             --no-sandbox" infobar (cosmetic only)
 # Wrap the binary AND patch the menu launcher so both "just work", and make
 # Chrome the default browser so CLIs (e.g. Claude Code) can auto-open links.
 RUN printf '%s\n' '#!/bin/sh' \
-      'exec /usr/bin/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage "$@"' \
+      'exec /usr/bin/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type "$@"' \
       > /usr/local/bin/google-chrome \
  && chmod +x /usr/local/bin/google-chrome \
  && ln -sf /usr/local/bin/google-chrome /usr/local/bin/google-chrome-stable \
- && sed -i '/^Exec=/ s#google-chrome-stable#google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage#' \
+ && sed -i '/^Exec=/ s#google-chrome-stable#google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type#' \
       /usr/share/applications/google-chrome.desktop \
  && update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/local/bin/google-chrome 200 \
  && update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/local/bin/google-chrome 200
@@ -65,6 +67,12 @@ RUN mkdir -p /home/vscode/.config/xfce4/xfce4-terminal \
  && printf '%s\n' '(gtk_accel_path "<Actions>/terminal-window/paste" "<Primary>v")' \
       > /home/vscode/.config/xfce4/xfce4-terminal/accels.scm \
  && chown -R vscode:vscode /home/vscode/.config
+
+# uv: the Python runtime/installer the Slack bot + axon bridge run under
+# (`uv run python ...`). Installed system-wide into /usr/local/bin so it's on
+# PATH for every shell and user. (Previously patched in at runtime by Central's
+# SSH provisioning; baked into the image now.)
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
 # Desktop launcher script (starts KasmVNC + XFCE); invoked from postStartCommand.
 COPY start-desktop.sh /usr/local/bin/start-desktop.sh

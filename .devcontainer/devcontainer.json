@@ -4,7 +4,10 @@
   "features": {
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
-    "ghcr.io/devcontainers/features/sshd:1": {}
+    "ghcr.io/devcontainers/features/sshd:1": {},
+    // gh CLI: the setup wizard's pick-repo step uses it (gh repo list / secret
+    // set / repo clone), and Central drives the desktop over `gh codespace ssh`.
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   // 6080 must be in forwardPorts so the public forwarded URL
   // (<codespace>-6080.app.github.dev) actually maps to it. Auto-forward only
@@ -23,7 +26,10 @@
     "DISPLAY": ":1",
     "BROWSER": "/usr/local/bin/google-chrome"
   },
-  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && mkdir -p $HOME/projects",
+  // Install the agent CLI, make the projects dir, and pre-install the setup
+  // wizard's deps so the folderOpen autostart task launches instantly (no npm
+  // install on first open). Runs in the workspace folder (/workspaces/cities).
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && mkdir -p $HOME/projects && npm --prefix setup-wizard install",
   // The desktop is intentionally NOT started here. A KasmVNC launched from a
   // lifecycle command (postStart/postCreate) is reaped by Codespaces shortly
   // after the command finishes, so it's reliably down by the time anyone
