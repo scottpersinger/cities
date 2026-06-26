@@ -6,6 +6,9 @@ export interface WizardState {
   completed: string[];
   /** which agent the user installed (only "claude-code" today) */
   agent?: string;
+  /** how the agent controls the browser: the Claude-in-Chrome extension, or
+   *  the Chrome DevTools MCP (CDP over the debug port) */
+  browser?: "extension" | "devtools";
   /** repo selected in step 5, "owner/name" */
   repo?: string;
   /** local checkout path for the selected repo */

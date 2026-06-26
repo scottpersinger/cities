@@ -41,14 +41,17 @@ RUN . /etc/os-release \
 #   --disable-dev-shm-usage : /dev/shm is only ~64MB; use /tmp to avoid renderer crashes
 #   --test-type             : hides the yellow "unsupported command-line flag:
 #                             --no-sandbox" infobar (cosmetic only)
+#   --remote-debugging-port=9222 : expose the DevTools Protocol on localhost so
+#                             the chrome-devtools MCP can drive this visible
+#                             browser (gated behind the private codespace).
 # Wrap the binary AND patch the menu launcher so both "just work", and make
 # Chrome the default browser so CLIs (e.g. Claude Code) can auto-open links.
 RUN printf '%s\n' '#!/bin/sh' \
-      'exec /usr/bin/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type "$@"' \
+      'exec /usr/bin/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type --remote-debugging-port=9222 "$@"' \
       > /usr/local/bin/google-chrome \
  && chmod +x /usr/local/bin/google-chrome \
  && ln -sf /usr/local/bin/google-chrome /usr/local/bin/google-chrome-stable \
- && sed -i '/^Exec=/ s#google-chrome-stable#google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type#' \
+ && sed -i '/^Exec=/ s#google-chrome-stable#google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type --remote-debugging-port=9222#' \
       /usr/share/applications/google-chrome.desktop \
  && update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/local/bin/google-chrome 200 \
  && update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/local/bin/google-chrome 200

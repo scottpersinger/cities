@@ -1,56 +1,20 @@
 import * as p from "@clack/prompts";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claude, capture, inDesktop, BRIDGE_DIR } from "../env.js";
+import { claude } from "../env.js";
+import { upsertBridgeEnv, restartBridge } from "../bridge-ctl.js";
 import { ask } from "../prompt.js";
 import type { Step } from "../types.js";
 
 const CREDENTIALS = path.join(os.homedir(), ".claude", ".credentials.json");
 
-// Upsert KEY=value into an env file, preserving every other line. Mirrors the
-// bridge .env upsert Central does over SSH.
-function upsertEnv(file: string, key: string, value: string): void {
-  const lines = existsSync(file)
-    ? readFileSync(file, "utf8").split("\n").filter((l) => !l.startsWith(`${key}=`))
-    : [];
-  while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
-  lines.push(`${key}=${value}`);
-  writeFileSync(file, lines.join("\n") + "\n", { mode: 0o600 });
-}
-
 // Persist the API key so (a) the rest of this wizard run (the step-4 smoke test)
-// can use it, and (b) the bot picks it up: app.py / bridge.py load the
-// bridge .env, and the claude subprocess they spawn inherits ANTHROPIC_API_KEY.
+// can use it, and (b) the bot picks it up: app.py / bridge.py load the bridge
+// .env, and the claude subprocess they spawn inherits ANTHROPIC_API_KEY.
 function persistApiKey(key: string): { wroteEnv: boolean } {
   process.env.ANTHROPIC_API_KEY = key;
-  if (existsSync(BRIDGE_DIR)) {
-    upsertEnv(path.join(BRIDGE_DIR, ".env"), "ANTHROPIC_API_KEY", key);
-    return { wroteEnv: true };
-  }
-  return { wroteEnv: false };
-}
-
-// The running bridge only reads .env at startup, so new auth (API key written
-// to .env, or a fresh ~/.claude login) won't reach its claude subprocesses until
-// it restarts. Bounce it via supervisord so the change takes effect immediately.
-// Best-effort: never fail the step on this.
-async function restartBridge(): Promise<void> {
-  if (!inDesktop) return;
-  const conf = path.join(BRIDGE_DIR, "supervisord.conf");
-  try {
-    await capture("supervisorctl", ["-c", conf, "restart", "bridge"]);
-    p.log.success("Restarted the agent bridge to pick up the new credentials.");
-  } catch {
-    // supervisord may not be running yet; killing the process lets it (if up)
-    // autorestart. Harmless if nothing is running.
-    try {
-      await capture("pkill", ["-f", "bridge.py"]);
-    } catch {
-      /* nothing to kill */
-    }
-    p.log.info("Signaled the agent bridge to restart with the new credentials.");
-  }
+  return { wroteEnv: upsertBridgeEnv("ANTHROPIC_API_KEY", key) };
 }
 
 /** Step 2 — authenticate the agent against the user's Claude account. */
