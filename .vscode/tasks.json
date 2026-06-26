@@ -1,0 +1,26 @@
+{
+  // Auto-launch the coderbots setup wizard when this codespace is opened in the
+  // VS Code editor. A folderOpen task runs in an integrated-terminal tab (a real
+  // TTY), which the interactive @clack wizard needs — unlike the devcontainer
+  // postAttach/postStart hooks, whose output goes to a non-interactive log.
+  //
+  // In Codespaces the workspace is trusted, so automatic tasks run without a
+  // prompt. The wizard exits immediately once setup is complete (autostart.sh
+  // sets CODERBOTS_AUTOSTART=1), so on later opens this is a no-op.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "coderbots: setup wizard",
+      "type": "shell",
+      "command": "bash setup-wizard/autostart.sh",
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}

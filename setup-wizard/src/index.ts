@@ -23,8 +23,20 @@ async function main() {
     save: () => saveState(state),
   };
 
-  // Resume support: if some steps are already done, offer to jump in.
+  // Auto-start (folderOpen task): once every step is done, don't nag on each
+  // editor open — print a hint and exit. Manual runs (no autostart flag) still
+  // fall through and re-offer the steps.
+  const autostart =
+    process.env.CODERBOTS_AUTOSTART === "1" || process.argv.includes("--auto");
   const doneCount = state.completed.length;
+  if (autostart && doneCount >= steps.length) {
+    p.outro(
+      "✅ Setup already complete. Run `npm run dev` in setup-wizard to re-run.",
+    );
+    return;
+  }
+
+  // Resume support: if some steps are already done, offer to jump in.
   let startIndex = 0;
   if (doneCount > 0 && doneCount < steps.length) {
     const choice = await ask(
