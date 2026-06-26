@@ -4,3 +4,8 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+# Bridge runtime state/logs (written in the codespace)
+.axon-*.seq
+.axon-*.seq.tmp
+bridge.log
+supervisord.log

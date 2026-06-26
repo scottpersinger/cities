@@ -251,6 +251,40 @@ async def resolve_axon_id(http: aiohttp.ClientSession, api_key: str) -> str:
     return axon_id
 
 
+# Where the last-processed Axon sequence is persisted so a restart resumes past
+# events it already handled instead of replaying the whole log (Axon is an
+# append-only stream with no per-subscriber ack — the consumer owns its offset).
+# Defaults to the bridge dir, which lives on the /workspaces volume that persists
+# across codespace stop/start.
+SEQ_DIR = os.getenv("AXON_SEQ_DIR") or os.path.dirname(os.path.abspath(__file__))
+
+
+def _seq_path(axon_id: str) -> str:
+    return os.path.join(SEQ_DIR, f".axon-{axon_id}.seq")
+
+
+def load_seq(axon_id: str) -> int:
+    """Last sequence we durably recorded for this axon, or -1 if none."""
+    try:
+        with open(_seq_path(axon_id)) as f:
+            return int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        return -1
+
+
+def save_seq(axon_id: str, seq: int) -> None:
+    """Persist the read offset atomically (write-then-rename). Best-effort: a
+    failure here just risks reprocessing on a future restart, never a crash."""
+    path = _seq_path(axon_id)
+    tmp = f"{path}.tmp"
+    try:
+        with open(tmp, "w") as f:
+            f.write(str(seq))
+        os.replace(tmp, path)
+    except OSError as e:
+        log.warning("could not persist axon sequence %s: %s", seq, e)
+
+
 async def consume(
     http: aiohttp.ClientSession,
     axon_id: str,
@@ -264,7 +298,10 @@ async def consume(
     resume strategy proven in the spike (design §10)."""
     url = f"{RUNLOOP_BASE_URL}/v1/axons/{axon_id}/subscribe/sse"
     headers = {"Authorization": f"Bearer {api_key}", "Accept": "text/event-stream"}
-    after_seq = -1
+    # Resume past what we already processed across restarts, not just reconnects.
+    after_seq = load_seq(axon_id)
+    if after_seq >= 0:
+        log.info("resuming from persisted sequence %s", after_seq)
     # Hold references to in-flight turn tasks so they aren't garbage-collected
     # mid-execution (asyncio keeps only weak refs to bare create_task results).
     inflight: set[asyncio.Task] = set()
@@ -294,6 +331,10 @@ async def consume(
                             else:
                                 evt = json.loads(data)
                                 after_seq = evt.get("sequence", after_seq)
+                                # Persist the offset as we advance it (matches the
+                                # in-memory reconnect-resume semantics) so a restart
+                                # doesn't replay the whole log.
+                                save_seq(axon_id, after_seq)
                                 # Run the turn concurrently so the SSE loop keeps
                                 # reading; per-thread ordering is held by the
                                 # Session lock inside SessionManager.
