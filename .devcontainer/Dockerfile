@@ -69,7 +69,7 @@ RUN mkdir -p /home/vscode/.config/xfce4/xfce4-terminal \
       > /home/vscode/.config/xfce4/xfce4-terminal/accels.scm \
  && chown -R vscode:vscode /home/vscode/.config
 
-# uv: the Python runtime/installer the Slack bot + axon bridge run under
+# uv: the Python runtime/installer the Slack bot + bridge run under
 # (`uv run python ...`). Installed system-wide into /usr/local/bin so it's on
 # PATH for every shell and user. (Previously patched in at runtime by Central's
 # SSH provisioning; baked into the image now.)

@@ -5,7 +5,7 @@ __pycache__/
 *.pyc
 .DS_Store
 # Bridge runtime state/logs (written in the codespace)
-.axon-*.seq
-.axon-*.seq.tmp
+.ably-*.json
+.ably-*.json.tmp
 bridge.log
 supervisord.log

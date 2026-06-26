@@ -15,8 +15,8 @@ export const CHROME = "/usr/local/bin/google-chrome";
 export const CODERBOTS_HOME = path.join(os.homedir(), ".coderbots");
 
 /**
- * The Slack/Axon bridge directory. Its `.env` is what the bot (app.py /
- * axon_bridge.py) loads, so secrets the wizard collects (e.g. an Anthropic API
+ * The Slack/Ably bridge directory. Its `.env` is what the bot (app.py /
+ * bridge.py) loads, so secrets the wizard collects (e.g. an Anthropic API
  * key) are persisted here. Derived from this module's own location rather than
  * hardcoded, so it's independent of the repo name / checkout path: env.ts lives
  * at <repo>/setup-wizard/{src,dist}/env.* , and the bridge is <repo>/claude-slack-bot.
@@ -64,7 +64,7 @@ export async function which(bin: string): Promise<boolean> {
 
 /**
  * True unless CLAUDE_CHROME is explicitly off. Mirrors the bridge's _truthy
- * (app.py / axon_bridge.py): default ON, disabled by anything not in the
+ * (app.py / bridge.py): default ON, disabled by anything not in the
  * truthy set (0/false/no/off/…). Kept in sync so the wizard's smoke test and
  * the running bot agree on whether the Claude-in-Chrome MCP is enabled.
  */

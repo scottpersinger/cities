@@ -20,7 +20,7 @@ function upsertEnv(file: string, key: string, value: string): void {
 }
 
 // Persist the API key so (a) the rest of this wizard run (the step-4 smoke test)
-// can use it, and (b) the bot picks it up: app.py / axon_bridge.py load the
+// can use it, and (b) the bot picks it up: app.py / bridge.py load the
 // bridge .env, and the claude subprocess they spawn inherits ANTHROPIC_API_KEY.
 function persistApiKey(key: string): { wroteEnv: boolean } {
   process.env.ANTHROPIC_API_KEY = key;
