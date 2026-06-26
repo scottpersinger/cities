@@ -53,6 +53,13 @@ export const pickRepo: Step = {
         "100",
       ]);
       repos = JSON.parse(json) as RepoEntry[];
+      // gh returns most-recently-pushed first; sort alphabetically (case-
+      // insensitive) so the list is easy to scan.
+      repos.sort((a, b) =>
+        a.nameWithOwner.localeCompare(b.nameWithOwner, undefined, {
+          sensitivity: "base",
+        }),
+      );
       s.stop(`Found ${repos.length} repositories.`);
     } catch {
       s.stop("Could not list repos via gh.");
