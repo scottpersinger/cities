@@ -1,20 +1,28 @@
-# agent-dev-desktop
+```
+  ____          _           _           _
+ / ___|___   __| | ___ _ __| |__   ___ | |_ ___
+| |   / _ \ / _` |/ _ \ '__| '_ \ / _ \| __/ __|
+| |__| (_) | (_| |  __/ |  | |_) | (_) | |_\__ \
+ \____\___/ \__,_|\___|_|  |_.__/ \___/ \__|___/
+__        __         _
+\ \      / /__  _ __| | _____ _ __   __ _  ___ ___
+ \ \ /\ / / _ \| '__| |/ / __| '_ \ / _` |/ __/ _ \
+  \ V  V / (_) | |  |   <\__ \ |_) | (_| | (_|  __/
+   \_/\_/ \___/|_|  |_|\_\___/ .__/ \__,_|\___\___|
+                             |_|
+```
+
+# Coderbots Workspace
+
+### ▶ Run `./setup.sh` to get started
 
 A reusable **GitHub Codespaces environment** for an autonomous coding agent.
 This repo is not a project — it's the *machine definition*. You create a
 codespace from it, then the agent clones and runs **any** GitHub repo inside it.
 
-## Setup
-
-Run the setup wizard from the repo root:
-
-```bash
-./setup.sh
-```
-
-It installs/authenticates the agent, wires up Claude-in-Chrome, and connects the
-event bridge. (It also auto-launches the first time you open the codespace in VS
-Code.)
+`./setup.sh` installs/authenticates the agent, wires up Claude-in-Chrome, and
+connects the event bridge. (It also auto-launches the first time you open the
+codespace in VS Code.)
 
 ## What you get
 
