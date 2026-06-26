@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { claude, BRIDGE_DIR } from "../env.js";
+import { claude, capture, inDesktop, BRIDGE_DIR } from "../env.js";
 import { ask } from "../prompt.js";
 import type { Step } from "../types.js";
 
@@ -29,6 +29,28 @@ function persistApiKey(key: string): { wroteEnv: boolean } {
     return { wroteEnv: true };
   }
   return { wroteEnv: false };
+}
+
+// The running bridge only reads .env at startup, so new auth (API key written
+// to .env, or a fresh ~/.claude login) won't reach its claude subprocesses until
+// it restarts. Bounce it via supervisord so the change takes effect immediately.
+// Best-effort: never fail the step on this.
+async function restartBridge(): Promise<void> {
+  if (!inDesktop) return;
+  const conf = path.join(BRIDGE_DIR, "supervisord.conf");
+  try {
+    await capture("supervisorctl", ["-c", conf, "restart", "bridge"]);
+    p.log.success("Restarted the agent bridge to pick up the new credentials.");
+  } catch {
+    // supervisord may not be running yet; killing the process lets it (if up)
+    // autorestart. Harmless if nothing is running.
+    try {
+      await capture("pkill", ["-f", "bridge.py"]);
+    } catch {
+      /* nothing to kill */
+    }
+    p.log.info("Signaled the agent bridge to restart with the new credentials.");
+  }
 }
 
 /** Step 2 — authenticate the agent against the user's Claude account. */
@@ -78,6 +100,7 @@ export const authenticateAgent: Step = {
           ? "API key saved to the bot's .env and this session — Claude Code will use it."
           : "API key set for this session (bridge dir not found, so nothing persisted to disk).",
       );
+      if (wroteEnv) await restartBridge();
       return;
     }
 
@@ -111,5 +134,7 @@ export const authenticateAgent: Step = {
       );
     }
     p.log.success("Claude Code is authenticated.");
+    // Bounce the bridge so existing sessions re-spawn claude with the new login.
+    await restartBridge();
   },
 };
