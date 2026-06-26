@@ -29,8 +29,15 @@ export const testAndListen: Step = {
       try {
         await claude([
           "-p",
-          "Using the Claude-in-Chrome extension, open https://example.com, " +
-            "then tell me the page title. If you cannot reach the browser, say so.",
+          [
+            "Using the Claude-in-Chrome extension, open https://example.com and",
+            "tell me the page title.",
+            "If more than one browser is connected, do NOT ask me to choose —",
+            "automatically select the one running on Linux (this codespace's",
+            "desktop); a macOS/Windows browser, if present, is the user's laptop",
+            "and must be ignored. If exactly one is connected, just use it.",
+            "If you cannot reach any browser, say so.",
+          ].join(" "),
         ]);
         const ok = await ask(
           p.confirm({ message: "Did Claude open the page and report the title?" }),
