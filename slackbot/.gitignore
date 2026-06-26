@@ -1,7 +1,0 @@
-.env
-.slack_user_token
-.venv/
-venv/
-__pycache__/
-*.pyc
-.DS_Store

@@ -21,7 +21,6 @@ Slack app setup (Socket Mode):
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import os
 import random
@@ -106,6 +105,15 @@ THINKING_PHRASES = (
 
 load_dotenv()
 
+# install.py needs SLACK_CLIENT_ID / SLACK_CLIENT_SECRET (OAuth app install), so
+# they live in .env too. But slack_bolt auto-enables OAuth the moment it sees
+# them in the environment, which makes AsyncApp ignore our static bot token and
+# try to resolve tokens from an (empty) installation store — the bot then can't
+# authorize events. We run plain Socket Mode with a fixed bot token, so drop
+# these before constructing the app.
+for _install_only in ("SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET"):
+    os.environ.pop(_install_only, None)
+
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
@@ -152,7 +160,9 @@ long paragraphs."""
 
 
 sessions = SessionManager(
-    cwd=os.getenv("CLAUDE_CWD", os.path.expanduser("~")),
+    # Run each claude subprocess in the directory the bot was launched from.
+    # `cd` to the repo/project you want the agent to work in, then start the bot.
+    cwd=os.getcwd(),
     permission_mode=os.getenv("CLAUDE_PERMISSION_MODE", "bypassPermissions"),
     model=os.getenv("CLAUDE_MODEL") or None,
     setting_sources=_parse_sources(
@@ -489,12 +499,6 @@ async def handle_user_message(event: dict[str, Any], client) -> None:
     )
     await botspeak.open()
 
-    transcript = io.StringIO()
-    transcript.write(
-        f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} session={skey} user={user} ===\n\n"
-    )
-    transcript.write(f"[user]\n{text}\n\n")
-    tool_count = 0
     last_result_summary = ""
     error: Exception | None = None
 
@@ -502,52 +506,24 @@ async def handle_user_message(event: dict[str, Any], client) -> None:
         async for chunk in session.send(text):
             if chunk.kind == "text":
                 await streamer.append(chunk.text)
-                transcript.write(f"[assistant]\n{chunk.text}\n\n")
             elif chunk.kind == "tool_use":
-                tool_count += 1
-                transcript.write(f"{chunk.text}\n\n")
                 await botspeak.add_tool(chunk.name, chunk.args)
             elif chunk.kind == "tool_result":
                 if chunk.is_error:
                     await botspeak.add_tool_error(chunk.text)
             elif chunk.kind == "result":
                 if chunk.text:
-                    transcript.write(f"[result] {chunk.text}\n")
                     last_result_summary = chunk.text
         await streamer.flush(force=True)
     except Exception as e:
         error = e
         log.exception("session error on %s", skey)
-        transcript.write(f"\n[error] {type(e).__name__}: {e}\n")
         await streamer.replace_with(f":warning: error: `{e}`")
 
     await botspeak.finish(
         last_result_summary,
         error=f"{type(error).__name__}: {error}" if error else None,
     )
-
-    if tool_count > 0 or error is not None:
-        await _upload_transcript(
-            client, channel, reply_thread, skey, transcript.getvalue(),
-        )
-
-
-async def _upload_transcript(
-    client, channel: str, thread_ts: str | None, skey: str, content: str,
-) -> None:
-    safe_key = skey.replace(":", "-").replace(".", "-")
-    filename = f"transcript-{safe_key}-{int(time.time())}.txt"
-    try:
-        await client.files_upload_v2(
-            channel=channel,
-            thread_ts=thread_ts,
-            content=content,
-            filename=filename,
-            title=f"transcript ({skey})",
-            snippet_type="text",
-        )
-    except Exception:
-        log.exception("transcript upload failed for %s", skey)
 
 
 @app.command("/clear")

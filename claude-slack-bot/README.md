@@ -57,11 +57,13 @@ cp .env.example .env
 # fill in SLACK_BOT_TOKEN and SLACK_APP_TOKEN
 ```
 
+The `claude` subprocess runs in the **directory the bot is launched from** — `cd`
+into the project you want the agent to work in, then start the bot.
+
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `SLACK_BOT_TOKEN` | — | required, `xoxb-…` |
 | `SLACK_APP_TOKEN` | — | required, `xapp-…` |
-| `CLAUDE_CWD` | `$HOME` | working directory each `claude` subprocess runs in |
 | `CLAUDE_PERMISSION_MODE` | `bypassPermissions` | `default` / `acceptEdits` / `plan` / `bypassPermissions` |
 | `CLAUDE_MODEL` | (claude default) | e.g. `claude-opus-4-7` |
 | `CLAUDE_SETTING_SOURCES` | `user,project,local` | which Claude Code config layers to inherit; comma-separated subset of `user`, `project`, `local`. See [MCP servers and other settings](#mcp-servers-and-other-settings). |
@@ -74,14 +76,16 @@ cp .env.example .env
 By default the Claude Agent SDK does **not** read your `~/.claude` config — meaning MCP servers, slash commands, sub-agents, and skills you've set up locally are invisible to the bot. Setting `CLAUDE_SETTING_SOURCES=user,project,local` (the default here) tells the SDK to load:
 
 - `user` — `~/.claude/settings.json` and `~/.claude.json` (your global MCP servers, etc.)
-- `project` — `<CLAUDE_CWD>/.claude/settings.json` (project-level config)
-- `local` — `<CLAUDE_CWD>/.claude/settings.local.json` (gitignored local overrides)
+- `project` — `<cwd>/.claude/settings.json` (project-level config)
+- `local` — `<cwd>/.claude/settings.local.json` (gitignored local overrides)
+
+(`<cwd>` is the directory the bot was launched from — the `claude` subprocess inherits it.)
 
 Set it to a smaller list (or empty) if you want the bot's `claude` to run with an isolated config — useful if a local MCP server you don't want exposed via Slack would otherwise be auto-loaded.
 
 ### About `CLAUDE_PERMISSION_MODE`
 
-There is no UI in Slack to approve permission prompts, so the default is `bypassPermissions`. That means Claude can run any tool — including `Bash` — in `CLAUDE_CWD` and anywhere else its tools can reach, with no human in the loop. Treat the bot as a remote-code-execution surface scoped to whatever account it runs under, and lock down `CLAUDE_CWD` accordingly. Switch to `acceptEdits` if you want a tighter blast radius (Claude can read freely but won't write/exec without prompts — and prompts will block, since nothing answers them).
+There is no UI in Slack to approve permission prompts, so the default is `bypassPermissions`. That means Claude can run any tool — including `Bash` — in the bot's working directory (the directory it was launched from) and anywhere else its tools can reach, with no human in the loop. Treat the bot as a remote-code-execution surface scoped to whatever account it runs under, and launch it from a directory you're comfortable exposing. Switch to `acceptEdits` if you want a tighter blast radius (Claude can read freely but won't write/exec without prompts — and prompts will block, since nothing answers them).
 
 ## Run
 
