@@ -121,3 +121,26 @@ export async function openUrl(url: string): Promise<void> {
   // Fallback for non-desktop Linux.
   execa("xdg-open", [url], { detached: true, stdio: "ignore", env }).unref();
 }
+
+/**
+ * Launch the desktop Chrome with no URL (a blank window), so it's already open
+ * on the desktop by the time the user reaches the extension-install step.
+ * Codespace-desktop only; fire-and-forget. Same DISPLAY/wrapper handling as
+ * openUrl. Returns false if there's no desktop Chrome to launch.
+ */
+export function launchChrome(): boolean {
+  if (!existsSync(CHROME)) return false;
+  const env = { ...process.env, DISPLAY: process.env.DISPLAY || ":1" };
+  execa(CHROME, [], { detached: true, stdio: "ignore", env }).unref();
+  return true;
+}
+
+/** True if a desktop Chrome process is already running. */
+export async function chromeRunning(): Promise<boolean> {
+  try {
+    await execa("pgrep", ["-f", "google-chrome"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}

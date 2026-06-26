@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { existsSync } from "node:fs";
 import net from "node:net";
-import { inDesktop, capture } from "./env.js";
+import { inDesktop, capture, launchChrome, chromeRunning } from "./env.js";
 
 /**
  * The desktop bring-up script baked into the image (the repo's .devcontainer/
@@ -57,30 +57,37 @@ export async function ensureDesktop(): Promise<void> {
     return;
   }
 
-  if (await portServing()) {
+  let up = await portServing();
+  if (up) {
     p.log.success("Desktop already running (KasmVNC on :6080).");
-    return;
+  } else {
+    const s = p.spinner();
+    s.start("Starting the desktop (KasmVNC) — this can take a minute on a cold start…");
+    // reject:false because the script always exits 0; the port check is the real
+    // signal. Generous timeout covers the cold-start port-forwarder contention.
+    // Ensure /usr/sbin (and /sbin) are on PATH so the script's own `ss`-based
+    // serving check resolves — otherwise it can't tell it's already up and would
+    // kill+relaunch the desktop.
+    const PATH = `/usr/sbin:/sbin:${process.env.PATH ?? ""}`;
+    await capture("bash", [DESKTOP_SCRIPT], {
+      reject: false,
+      timeout: 180_000,
+      env: { ...process.env, PATH },
+    });
+    up = await portServing();
+    if (up) {
+      s.stop("Desktop is running (KasmVNC on :6080).");
+    } else {
+      s.stop(
+        "Desktop didn't come up — continuing anyway. Re-run /usr/local/bin/start-desktop.sh if browser steps fail.",
+      );
+    }
   }
 
-  const s = p.spinner();
-  s.start("Starting the desktop (KasmVNC) — this can take a minute on a cold start…");
-  // reject:false because the script always exits 0; the port check is the real
-  // signal. Generous timeout covers the cold-start port-forwarder contention.
-  // Ensure /usr/sbin (and /sbin) are on PATH so the script's own `ss`-based
-  // serving check resolves — otherwise it can't tell it's already up and would
-  // kill+relaunch the desktop.
-  const PATH = `/usr/sbin:/sbin:${process.env.PATH ?? ""}`;
-  await capture("bash", [DESKTOP_SCRIPT], {
-    reject: false,
-    timeout: 180_000,
-    env: { ...process.env, PATH },
-  });
-
-  if (await portServing()) {
-    s.stop("Desktop is running (KasmVNC on :6080).");
-  } else {
-    s.stop(
-      "Desktop didn't come up — continuing anyway. Re-run /usr/local/bin/start-desktop.sh if browser steps fail.",
-    );
+  // Pre-open Chrome (blank window) so it's ready on the desktop by the time we
+  // reach the extension-install step. Skip if it's already running so re-runs
+  // don't stack windows.
+  if (up && !(await chromeRunning())) {
+    if (launchChrome()) p.log.info("Opened Chrome on the desktop.");
   }
 }
