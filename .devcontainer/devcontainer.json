@@ -7,8 +7,16 @@
     "ghcr.io/devcontainers/features/sshd:1": {},
     // gh CLI: the setup wizard's pick-repo step uses it (gh repo list / secret
     // set / repo clone), and Central drives the desktop over `gh codespace ssh`.
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // Docker-in-Docker: agents run lots of cloned apps here, many of which ship a
+    // docker-compose (esp. DB-backed ones) — run them in containers instead of
+    // installing services onto the codespace. Keeps apps isolated and the base
+    // image clean.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
+  // Headroom for container images now that apps run under Docker (default is
+  // ~32GB, which fills quickly across many app images).
+  "hostRequirements": { "storage": "64gb" },
   // 6080 must be in forwardPorts so the public forwarded URL
   // (<codespace>-6080.app.github.dev) actually maps to it. Auto-forward only
   // fires when the VS Code editor client detects the listener; the Codespaces
