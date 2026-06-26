@@ -131,7 +131,7 @@ def _truthy(v: str | None) -> bool:
 
 
 _extra_args: dict[str, str | None] = {}
-if _truthy(os.getenv("CLAUDE_CHROME")):
+if _truthy(os.getenv("CLAUDE_CHROME", "1")):
     _extra_args["chrome"] = None
 
 

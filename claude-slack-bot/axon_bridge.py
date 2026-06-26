@@ -79,7 +79,7 @@ def build_session_manager() -> SessionManager:
     """Mirror app.py's SessionManager configuration so the agent behaves the
     same whether driven from Slack Socket Mode or from the Axon."""
     extra_args: dict[str, str | None] = {}
-    if _truthy(os.getenv("CLAUDE_CHROME")):
+    if _truthy(os.getenv("CLAUDE_CHROME", "1")):
         extra_args["chrome"] = None
     return SessionManager(
         cwd=os.getcwd(),

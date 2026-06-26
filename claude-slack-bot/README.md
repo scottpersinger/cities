@@ -67,7 +67,7 @@ into the project you want the agent to work in, then start the bot.
 | `CLAUDE_PERMISSION_MODE` | `bypassPermissions` | `default` / `acceptEdits` / `plan` / `bypassPermissions` |
 | `CLAUDE_MODEL` | (claude default) | e.g. `claude-opus-4-7` |
 | `CLAUDE_SETTING_SOURCES` | `user,project,local` | which Claude Code config layers to inherit; comma-separated subset of `user`, `project`, `local`. See [MCP servers and other settings](#mcp-servers-and-other-settings). |
-| `CLAUDE_CHROME` | `0` | set to `1` to spawn `claude` with `--chrome`, enabling the Claude-in-Chrome browser MCP (requires the Chrome extension installed for this user). |
+| `CLAUDE_CHROME` | `1` | on by default — spawns `claude` with `--chrome`, enabling the Claude-in-Chrome browser MCP (requires the Chrome extension installed for this user). Set to `0` to disable. |
 | `BOTSPEAK_CHANNEL` | — | optional channel ID (e.g. `C0123ABCD`) to mirror per-turn progress into. See [Sidecar progress channel](#sidecar-progress-channel). |
 | `LOG_LEVEL` | `INFO` | set to `DEBUG` for full prompts, full assistant text, full tool args, full tool results, and thinking blocks. See [Debugging](#debugging). |
 
