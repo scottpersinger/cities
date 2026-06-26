@@ -41,6 +41,19 @@ export interface Step {
    * just noise.
    */
   autoSkip?: boolean;
-  /** Do the work. Throw to signal failure; the runner handles reporting. */
-  run: (ctx: StepContext) => Promise<void>;
+  /**
+   * When true the step presents its own "Skip this step" option inside its
+   * existing prompt and returns `{ skipped: true }` if chosen — so the runner
+   * does NOT add a separate Run/Skip prompt (avoids asking twice). Use for steps
+   * that already make the user choose something.
+   */
+  ownsSkip?: boolean;
+  /** Do the work. Throw to signal failure; the runner handles reporting.
+   *  Return `{ skipped: true }` to indicate the user skipped from within. */
+  run: (ctx: StepContext) => Promise<void | StepResult>;
+}
+
+export interface StepResult {
+  /** the user chose to skip this step from within run() */
+  skipped?: boolean;
 }

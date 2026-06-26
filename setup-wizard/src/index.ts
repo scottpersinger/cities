@@ -82,37 +82,45 @@ async function main() {
       continue;
     }
 
-    // Every step is skippable. Default to skip when it already looks done.
-    const action = await ask(
-      p.select({
-        message: "Run this step?",
-        options: [
-          {
-            value: "run",
-            label: satisfied ? "Run it again" : "Run it",
-            hint: step.summary,
-          },
-          {
-            value: "skip",
-            label: "Skip this step",
-            hint: satisfied ? "looks already done" : "do it later",
-          },
-        ],
-        initialValue: satisfied ? "skip" : "run",
-      }),
-    );
-    if (action === "skip") {
-      // Only mark complete if it's actually satisfied — skipping an unsatisfied
-      // step is "later", so it's re-offered next run (setup isn't "complete").
-      if (satisfied) {
-        markComplete(state, step.id);
-        await ctx.save();
+    // Steps that already prompt for a choice carry their own "Skip this step"
+    // option (ownsSkip) so we don't ask twice. Everything else gets a universal
+    // Run/Skip prompt here, defaulting to skip when it already looks done.
+    if (!step.ownsSkip) {
+      const action = await ask(
+        p.select({
+          message: "Run this step?",
+          options: [
+            {
+              value: "run",
+              label: satisfied ? "Run it again" : "Run it",
+              hint: step.summary,
+            },
+            {
+              value: "skip",
+              label: "Skip this step",
+              hint: satisfied ? "looks already done" : "do it later",
+            },
+          ],
+          initialValue: satisfied ? "skip" : "run",
+        }),
+      );
+      if (action === "skip") {
+        // Only mark complete if it's actually satisfied — skipping an unsatisfied
+        // step is "later", so it's re-offered next run (setup isn't "complete").
+        if (satisfied) {
+          markComplete(state, step.id);
+          await ctx.save();
+        }
+        continue;
       }
-      continue;
     }
 
     try {
-      await step.run(ctx);
+      const result = await step.run(ctx);
+      if (result?.skipped) {
+        // User skipped from within the step's own prompt — don't mark complete.
+        continue;
+      }
       markComplete(state, step.id);
       await ctx.save();
     } catch (err) {

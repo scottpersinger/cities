@@ -22,6 +22,7 @@ export const authenticateAgent: Step = {
   id: "authenticate-agent",
   title: "Authenticate agent",
   summary: "Log in to Claude (email + verification code) via the desktop browser",
+  ownsSkip: true, // the method select below carries its own "Skip" option
 
   async check() {
     // Best-effort: Claude Code persists OAuth credentials here once logged in.
@@ -43,10 +44,13 @@ export const authenticateAgent: Step = {
             label: "Enter an Anthropic API key",
             hint: "sk-ant-… — no browser needed",
           },
+          { value: "skip", label: "Skip this step", hint: "do it later" },
         ],
         initialValue: "browser",
       }),
     );
+
+    if (method === "skip") return { skipped: true };
 
     if (method === "apikey") {
       const key = await ask(

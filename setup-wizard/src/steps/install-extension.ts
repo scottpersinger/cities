@@ -136,6 +136,7 @@ export const installExtension: Step = {
   id: "install-extension",
   title: "Set up browser control",
   summary: "Claude-in-Chrome extension, or the Chrome DevTools MCP",
+  ownsSkip: true, // the method select below carries its own "Skip" option
 
   // No reliable programmatic check from outside the browser; always offer it.
   async run(ctx) {
@@ -153,11 +154,13 @@ export const installExtension: Step = {
             label: "Chrome DevTools MCP",
             hint: "no extension; drives Chrome over the debug port",
           },
+          { value: "skip", label: "Skip this step", hint: "set this up later" },
         ],
         initialValue: "extension",
       }),
     );
 
+    if (method === "skip") return { skipped: true };
     if (method === "devtools") await setupDevtoolsMcp(ctx);
     else await setupExtension(ctx);
   },
