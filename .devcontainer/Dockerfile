@@ -44,14 +44,23 @@ RUN . /etc/os-release \
 #   --remote-debugging-port=9222 : expose the DevTools Protocol on localhost so
 #                             the chrome-devtools MCP can drive this visible
 #                             browser (gated behind the private codespace).
+#   --user-data-dir=...     : REQUIRED for the debug port. Since Chrome 136,
+#                             --remote-debugging-port is silently ignored when
+#                             Chrome runs on the *default* profile dir (a
+#                             security fix); the port only binds with a
+#                             non-default --user-data-dir. Without this, the
+#                             process shows the flag but 9222 refuses
+#                             connections. Keep this dir identical across the
+#                             wrapper and the .desktop launcher so both share
+#                             one profile (extensions, logins).
 # Wrap the binary AND patch the menu launcher so both "just work", and make
 # Chrome the default browser so CLIs (e.g. Claude Code) can auto-open links.
 RUN printf '%s\n' '#!/bin/sh' \
-      'exec /usr/bin/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type --remote-debugging-port=9222 "$@"' \
+      'exec /usr/bin/google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type --remote-debugging-port=9222 --user-data-dir="$HOME/.config/google-chrome-cdp" "$@"' \
       > /usr/local/bin/google-chrome \
  && chmod +x /usr/local/bin/google-chrome \
  && ln -sf /usr/local/bin/google-chrome /usr/local/bin/google-chrome-stable \
- && sed -i '/^Exec=/ s#google-chrome-stable#google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type --remote-debugging-port=9222#' \
+ && sed -i '/^Exec=/ s#google-chrome-stable#google-chrome-stable --no-sandbox --disable-gpu --disable-dev-shm-usage --test-type --remote-debugging-port=9222 --user-data-dir=/home/vscode/.config/google-chrome-cdp#' \
       /usr/share/applications/google-chrome.desktop \
  && update-alternatives --install /usr/bin/x-www-browser x-www-browser /usr/local/bin/google-chrome 200 \
  && update-alternatives --install /usr/bin/gnome-www-browser gnome-www-browser /usr/local/bin/google-chrome 200
