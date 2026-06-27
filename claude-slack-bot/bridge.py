@@ -29,9 +29,11 @@ import os
 import random
 import re
 import signal
+import tempfile
 import time
 from typing import Any, Optional
 
+import aiohttp
 from ably import AblyRealtime
 from dotenv import load_dotenv
 from slack_sdk.web.async_client import AsyncWebClient
@@ -171,6 +173,35 @@ class SlackRenderer:
             log.exception("chat_update (error message) failed")
 
 
+async def download_slack_files(
+    files: list[dict[str, Any]], token: str
+) -> list[str]:
+    """Download Slack file attachments (url_private needs the bot token) into a
+    temp dir; return the local paths so the agent can read them."""
+    out: list[str] = []
+    dirp = os.path.join(tempfile.gettempdir(), "slack-attachments")
+    os.makedirs(dirp, exist_ok=True)
+    headers = {"Authorization": f"Bearer {token}"}
+    async with aiohttp.ClientSession() as http:
+        for f in files:
+            url = f.get("url_private")
+            if not url:
+                continue
+            name = f.get("name") or f.get("id") or "file"
+            dest = os.path.join(dirp, f"{f.get('id', 'f')}-{name}")
+            try:
+                async with http.get(url, headers=headers) as r:
+                    r.raise_for_status()
+                    data = await r.read()
+                with open(dest, "wb") as fh:
+                    fh.write(data)
+                out.append(dest)
+                log.info("downloaded attachment %s -> %s", name, dest)
+            except Exception as e:  # noqa: BLE001 — one bad file shouldn't fail the turn
+                log.warning("attachment download failed for %s: %s", url, e)
+    return out
+
+
 async def handle_user_message(
     payload: dict[str, Any], sessions: SessionManager, slack: AsyncWebClient
 ) -> None:
@@ -178,11 +209,25 @@ async def handle_user_message(
     channel = payload.get("channel")
     reply_ts = payload.get("reply_thread_ts")
     text = payload.get("text") or payload.get("content") or ""
-    if not thread_key or not channel or not text:
+    files = payload.get("files") or []
+    if not thread_key or not channel or (not text and not files):
         log.warning("skipping user.message missing thread_key/channel/text: %s", payload)
         return
 
-    log.info("user.message thread=%s channel=%s len=%d", thread_key, channel, len(text))
+    # Download any attachments and tell the agent where they are (Claude Code can
+    # read image/text files directly).
+    if files:
+        local = await download_slack_files(files, slack.token or "")
+        if local:
+            listing = "\n".join(f"- {p}" for p in local)
+            text = (
+                f"{text}\n\n" if text else ""
+            ) + f"The user attached these files (local paths, read them as needed):\n{listing}"
+
+    log.info(
+        "user.message thread=%s channel=%s len=%d files=%d",
+        thread_key, channel, len(text), len(files),
+    )
     renderer = SlackRenderer(slack, channel, reply_ts)
     await renderer.open()
     session = await sessions.get_or_create(thread_key)
