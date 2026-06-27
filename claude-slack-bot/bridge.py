@@ -27,6 +27,7 @@ import json
 import logging
 import os
 import random
+import re
 import signal
 import time
 from typing import Any, Optional
@@ -55,7 +56,13 @@ Your replies are posted directly to Slack. Format every response in Slack's
 - Inline code: `backticks`. Code blocks: triple backticks (no language tag).
 - Links: <https://example.com|label> — NEVER [label](url).
 - Headings (#, ##) do not render — use a *bold* line instead.
-Keep output tight: Slack threads are narrow."""
+Keep output tight: Slack threads are narrow.
+
+To attach a file (screenshot, image, document) to your reply, save it to disk
+and put its absolute path on its own line prefixed with `ATTACH:`, e.g.:
+  ATTACH: /workspaces/app/shot.png
+Emit one ATTACH line per file. The file is uploaded to this thread; the ATTACH
+line itself is removed from your message, so write a normal sentence too."""
 
 MAX_MSG_CHARS = 2800
 MIN_UPDATE_INTERVAL_S = 1.0
@@ -179,14 +186,50 @@ async def handle_user_message(
     renderer = SlackRenderer(slack, channel, reply_ts)
     await renderer.open()
     session = await sessions.get_or_create(thread_key)
+    full_text: list[str] = []
     try:
         async for chunk in session.send(text):
             if chunk.kind == "text":
-                await renderer.append(chunk.text)
+                full_text.append(chunk.text)
+                # Strip ATTACH: lines from what's shown; we upload them below.
+                await renderer.append(_ATTACH_RE.sub("", chunk.text))
         await renderer.flush(force=True)
     except Exception as e:  # noqa: BLE001 — surface any turn failure to Slack
         log.exception("session error on %s", thread_key)
         await renderer.replace_with(f":warning: error: `{e}`")
+
+    # Upload any files the agent flagged (parse the full text so a marker split
+    # across stream chunks is still caught).
+    paths = [m.group(1).strip() for m in _ATTACH_RE.finditer("".join(full_text))]
+    if paths:
+        await upload_files(slack, channel, reply_ts, paths)
+
+
+# A line like `ATTACH: /abs/path/to/file` flags a file to upload to the thread.
+_ATTACH_RE = re.compile(r"^[ \t]*ATTACH:[ \t]*(.+?)[ \t]*$", re.MULTILINE)
+
+
+async def upload_files(
+    slack: AsyncWebClient,
+    channel: str,
+    thread_ts: Optional[str],
+    paths: list[str],
+) -> None:
+    for path in paths:
+        p = path if os.path.isabs(path) else os.path.join(os.getcwd(), path)
+        if not os.path.isfile(p):
+            log.warning("ATTACH: file not found: %s", p)
+            continue
+        try:
+            await slack.files_upload_v2(
+                channel=channel,
+                thread_ts=thread_ts,
+                file=p,
+                filename=os.path.basename(p),
+            )
+            log.info("uploaded %s to channel=%s", p, channel)
+        except SlackApiError:
+            log.exception("files_upload_v2 failed for %s", p)
 
 
 async def handle_session_clear(payload: dict[str, Any], sessions: SessionManager) -> None:
